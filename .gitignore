@@ -190,3 +190,7 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.temp
+
+# YOLO model files
+*.pt
+yolov8*.pt
