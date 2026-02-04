@@ -3,6 +3,7 @@ from flask_cors import CORS
 import pandas as pd
 import numpy as np
 from disease_predictor_enhanced import DiseasePredictor
+from skin_disease_predictor import get_skin_predictor
 import os
 
 app = Flask(__name__)
@@ -16,14 +17,70 @@ except Exception as e:
     print(f"Error initializing predictor: {e}")
     predictor = None
 
+# Initialize skin disease predictor
+try:
+    skin_predictor = get_skin_predictor()
+    print("Skin disease predictor initialized successfully")
+except Exception as e:
+    print(f"Error initializing skin predictor: {e}")
+    skin_predictor = None
+
 @app.route('/health', methods=['GET'])
 def health_check():
     """Health check endpoint"""
     return jsonify({
         'status': 'healthy',
         'service': 'ML Disease Predictor',
-        'model_loaded': predictor is not None
+        'model_loaded': predictor is not None,
+        'skin_model_loaded': skin_predictor is not None and skin_predictor.is_available()
     })
+
+@app.route('/skin/conditions', methods=['GET'])
+def get_skin_conditions():
+    """Get list of all supported skin conditions"""
+    if not skin_predictor:
+        return jsonify({'error': 'Skin disease predictor not available'}), 500
+    
+    try:
+        conditions = skin_predictor.get_supported_conditions()
+        return jsonify(conditions)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/skin/predict', methods=['POST'])
+def predict_skin_disease():
+    """Predict skin disease from uploaded image"""
+    if not skin_predictor:
+        return jsonify({'error': 'Skin disease predictor not available'}), 500
+    
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+        
+        # Extract image data and patient info
+        image_data = data.get('image')
+        patient_info = data.get('patient_info', {})
+        
+        if not image_data:
+            return jsonify({'error': 'No image data provided'}), 400
+        
+        # Make prediction
+        prediction_result = skin_predictor.predict(image_data, patient_info)
+        
+        # Add timestamp
+        response = {
+            'patient_info': patient_info,
+            'prediction': prediction_result,
+            'timestamp': pd.Timestamp.now().isoformat(),
+            'service_type': 'skin_disease_classification'
+        }
+        
+        return jsonify(response)
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/symptoms', methods=['GET'])
 def get_symptoms():
