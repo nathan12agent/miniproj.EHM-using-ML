@@ -267,6 +267,7 @@ For support and questions:
 - Create an issue in the GitHub repository
 - Check the troubleshooting section
 - Review the API documentation
+- Give suggestions
 
 ---
 
