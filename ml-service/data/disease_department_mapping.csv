@@ -1,0 +1,31 @@
+disease,department,specialist_type,urgency_level
+Heart Disease,Cardiology,Cardiologist,high
+Hypertension,Cardiology,Cardiologist,medium
+Cardiac Arrest,Emergency,Emergency Physician,critical
+Migraine,Neurology,Neurologist,medium
+Stroke,Neurology,Neurologist,critical
+Epilepsy,Neurology,Neurologist,high
+Flu,General Medicine,General Physician,low
+Fever,General Medicine,General Physician,low
+Common Cold,General Medicine,General Physician,low
+Diabetes,General Medicine,Endocrinologist,medium
+Fracture,Orthopedics,Orthopedic Surgeon,high
+Arthritis,Orthopedics,Orthopedic Surgeon,medium
+Back Pain,Orthopedics,Orthopedic Surgeon,medium
+Pneumonia,General Medicine,Pulmonologist,high
+Asthma,General Medicine,Pulmonologist,medium
+Tuberculosis,General Medicine,Pulmonologist,high
+Hepatitis,General Medicine,Gastroenterologist,high
+Gastritis,General Medicine,Gastroenterologist,medium
+Malaria,General Medicine,General Physician,high
+Dengue,General Medicine,General Physician,high
+Typhoid,General Medicine,General Physician,high
+Jaundice,General Medicine,Gastroenterologist,high
+Allergy,General Medicine,Allergist,low
+Skin Infection,Dermatology,Dermatologist,low
+Headache,Neurology,Neurologist,low
+Chest Pain,Cardiology,Cardiologist,high
+Cough,General Medicine,General Physician,low
+Infection,General Medicine,General Physician,medium
+Trauma,Emergency,Emergency Physician,critical
+Accident,Emergency,Emergency Physician,critical

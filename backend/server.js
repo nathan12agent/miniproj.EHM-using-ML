@@ -50,6 +50,7 @@ app.use('/api/billing', require('./routes/billing'));
 app.use('/api/ml', require('./routes/ml'));
 app.use('/api/reports', require('./routes/reports'));
 app.use('/api/attendance', require('./routes/attendance'));
+app.use('/api/admin/staff', require('./routes/admin_staff')); // Staff Management
 
 // Swagger documentation
 const swaggerJsdoc = require('swagger-jsdoc');

@@ -19,6 +19,8 @@ import Inventory from './pages/Inventory/Inventory';
 import Billing from './pages/Billing/Billing';
 import Reports from './pages/Reports/Reports';
 import MLDashboard from './pages/MLDashboard/MLDashboard';
+import StaffManagement from './pages/StaffManagement/StaffManagement';
+import SpecialistRecommendation from './pages/SpecialistRecommendation/SpecialistRecommendation';
 import ProtectedRoute from './components/ProtectedRoute/ProtectedRoute';
 
 // Doctor Portal Pages
@@ -324,6 +326,8 @@ function App() {
                         <Route path="/billing/*" element={<Billing />} />
                         <Route path="/reports" element={<Reports />} />
                         <Route path="/ml-dashboard" element={<MLDashboard />} />
+                        <Route path="/staff-management" element={<StaffManagement />} />
+                        <Route path="/specialist-recommendation" element={<SpecialistRecommendation />} />
                       </Routes>
                     </Layout>
                   </ProtectedRoute>

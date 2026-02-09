@@ -26,7 +26,7 @@ import {
   Visibility as ViewIcon,
 } from '@mui/icons-material';
 import { patientsAPI } from '../../services/api';
-import PatientForm from '../../components/PatientForm';
+import PatientFormEnhanced from '../../components/PatientFormEnhanced';
 import PatientDetailDialog from '../../components/PatientDetailDialog';
 
 function Patients() {
@@ -134,7 +134,7 @@ function Patients() {
           </Button>
         </Box>
 
-        <PatientForm
+        <PatientFormEnhanced
           open={formOpen}
           onClose={() => {
             setFormOpen(false);
@@ -316,9 +316,16 @@ function Patients() {
                         <IconButton 
                           size="small" 
                           color="primary"
-                          onClick={() => {
-                            setSelectedPatient(patient);
-                            setFormOpen(true);
+                          onClick={async () => {
+                            try {
+                              // Fetch complete patient data before editing
+                              const response = await patientsAPI.getById(patient._id);
+                              setSelectedPatient(response.data);
+                              setFormOpen(true);
+                            } catch (err) {
+                              console.error('Error fetching patient details:', err);
+                              alert('Failed to load patient details');
+                            }
                           }}
                           sx={{
                             '&:hover': {

@@ -1,0 +1,166 @@
+.staff-management-dashboard {
+  padding: 20px;
+  background-color: #f8f9fa;
+  min-height: 100vh;
+}
+
+.dashboard-title {
+  color: #2c3e50;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.kpi-card {
+  border-radius: 12px;
+  border: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+  margin-bottom: 20px;
+}
+
+.kpi-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.kpi-card .card-body {
+  padding: 20px;
+}
+
+.kpi-card h6 {
+  font-size: 0.875rem;
+  font-weight: 500;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.kpi-card h3 {
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.card {
+  border-radius: 12px;
+  border: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.card-header {
+  background-color: #fff;
+  border-bottom: 2px solid #e9ecef;
+  border-radius: 12px 12px 0 0 !important;
+  padding: 16px 20px;
+  font-weight: 600;
+}
+
+.table {
+  margin-bottom: 0;
+}
+
+.table thead th {
+  background-color: #f8f9fa;
+  border-bottom: 2px solid #dee2e6;
+  font-weight: 600;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #495057;
+  padding: 12px;
+}
+
+.table tbody tr {
+  transition: background-color 0.2s ease;
+}
+
+.table tbody tr:hover {
+  background-color: #f8f9fa;
+}
+
+.table tbody td {
+  vertical-align: middle;
+  padding: 12px;
+  font-size: 0.9rem;
+}
+
+.badge {
+  font-weight: 500;
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  border-radius: 6px;
+}
+
+.btn {
+  border-radius: 8px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 0.875rem;
+}
+
+.d-grid .btn {
+  margin-bottom: 10px;
+}
+
+.spinner-border {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.alert {
+  border-radius: 8px;
+  border: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.form-control, .form-select {
+  border-radius: 8px;
+  border: 1px solid #ced4da;
+  padding: 10px 12px;
+  transition: all 0.3s ease;
+}
+
+.form-control:focus, .form-select:focus {
+  border-color: #0d6efd;
+  box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
+.border-danger {
+  border: 2px solid #dc3545 !important;
+}
+
+.border-success {
+  border: 2px solid #198754 !important;
+}
+
+.border-warning {
+  border: 2px solid #ffc107 !important;
+}
+
+@media (max-width: 768px) {
+  .staff-management-dashboard {
+    padding: 10px;
+  }
+
+  .kpi-card h3 {
+    font-size: 1.5rem;
+  }
+
+  .table {
+    font-size: 0.8rem;
+  }
+
+  .table thead th,
+  .table tbody td {
+    padding: 8px;
+  }
+}

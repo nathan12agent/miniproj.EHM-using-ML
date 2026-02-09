@@ -1,0 +1,301 @@
+chest_pain,headache,fever,fracture,breathing_difficulty,age,department,disease
+0,1,0,0,0,72,Neurology,Migraine
+0,0,0,1,0,87,Orthopedics,Fracture
+0,0,1,0,1,24,Emergency,Pneumonia
+0,1,0,1,1,30,Neurology,Migraine
+1,1,1,1,0,33,Orthopedics,Fracture
+1,1,1,0,1,89,Cardiology,Heart Disease
+0,0,0,0,1,60,General Medicine,Flu
+1,0,1,1,0,62,Orthopedics,Fracture
+0,1,0,1,1,3,Neurology,Migraine
+0,0,0,0,0,39,General Medicine,Flu
+1,1,0,1,1,9,Cardiology,Heart Disease
+1,0,1,1,1,60,Cardiology,Heart Disease
+0,1,0,1,0,35,Neurology,Migraine
+1,0,1,1,1,4,Cardiology,Heart Disease
+1,1,1,1,1,4,Cardiology,Heart Disease
+1,0,0,1,1,44,Cardiology,Heart Disease
+1,1,1,1,1,48,Cardiology,Heart Disease
+0,1,1,0,1,62,Emergency,Pneumonia
+1,0,1,0,1,53,Cardiology,Heart Disease
+1,1,0,1,1,41,Cardiology,Heart Disease
+0,0,0,0,0,71,General Medicine,Flu
+0,1,0,1,1,88,Neurology,Migraine
+0,0,0,0,1,35,General Medicine,Flu
+0,0,0,0,1,41,General Medicine,Flu
+1,0,0,1,1,34,Cardiology,Heart Disease
+0,1,0,0,1,88,Neurology,Migraine
+0,0,1,1,1,35,Orthopedics,Fracture
+0,0,0,0,1,3,General Medicine,Flu
+0,0,1,0,0,14,Pediatrics,Child Fever
+0,0,0,0,0,42,General Medicine,Flu
+1,0,0,0,1,52,Cardiology,Heart Disease
+0,1,1,1,0,23,Orthopedics,Fracture
+0,0,0,0,0,36,General Medicine,Flu
+0,1,0,0,0,86,Neurology,Migraine
+1,1,1,0,1,57,Cardiology,Heart Disease
+0,1,1,1,1,44,Orthopedics,Fracture
+1,1,1,0,1,89,Cardiology,Heart Disease
+0,1,0,0,0,27,Neurology,Migraine
+1,0,1,0,0,3,Pediatrics,Child Fever
+0,1,1,0,0,62,General Medicine,Flu
+0,0,0,1,1,24,Orthopedics,Fracture
+0,0,1,1,1,88,Orthopedics,Fracture
+0,1,0,1,0,58,Neurology,Migraine
+1,1,1,0,1,3,Cardiology,Heart Disease
+0,0,0,1,0,59,Orthopedics,Fracture
+0,1,1,1,1,87,Orthopedics,Fracture
+0,1,0,0,0,2,Neurology,Migraine
+0,1,1,1,1,32,Orthopedics,Fracture
+0,1,0,0,1,17,Neurology,Migraine
+0,1,1,0,1,70,Emergency,Pneumonia
+1,0,0,1,1,73,Cardiology,Heart Disease
+1,0,1,1,0,3,Pediatrics,Child Fever
+1,1,0,1,0,67,Neurology,Migraine
+0,0,1,1,0,52,Orthopedics,Fracture
+0,0,1,1,0,82,Orthopedics,Fracture
+1,0,0,1,0,89,Orthopedics,Fracture
+1,0,0,1,1,7,Cardiology,Heart Disease
+1,1,1,1,0,60,Orthopedics,Fracture
+0,1,0,1,1,12,Neurology,Migraine
+0,0,1,0,0,9,Pediatrics,Child Fever
+0,0,0,1,1,3,Orthopedics,Fracture
+1,1,1,1,0,24,Orthopedics,Fracture
+1,0,0,1,1,38,Cardiology,Heart Disease
+1,1,1,0,1,89,Cardiology,Heart Disease
+0,0,0,1,1,82,Orthopedics,Fracture
+1,1,0,1,0,41,Neurology,Migraine
+1,0,1,0,1,21,Cardiology,Heart Disease
+1,1,1,1,1,7,Cardiology,Heart Disease
+0,0,1,0,1,76,Emergency,Pneumonia
+0,0,1,0,1,30,Emergency,Pneumonia
+1,1,0,0,1,8,Cardiology,Heart Disease
+0,0,1,0,1,28,Emergency,Pneumonia
+0,1,0,0,1,61,Neurology,Migraine
+1,0,1,0,1,49,Cardiology,Heart Disease
+1,0,1,1,1,46,Cardiology,Heart Disease
+0,1,0,1,0,37,Neurology,Migraine
+1,0,0,1,0,60,Orthopedics,Fracture
+0,1,0,0,0,32,Neurology,Migraine
+0,0,1,0,1,18,Emergency,Pneumonia
+0,1,0,1,1,67,Neurology,Migraine
+1,1,1,1,1,47,Cardiology,Heart Disease
+1,0,1,0,0,2,Pediatrics,Child Fever
+1,0,1,0,0,43,General Medicine,Flu
+1,1,0,0,1,26,Cardiology,Heart Disease
+0,1,0,1,0,60,Neurology,Migraine
+1,0,0,1,0,20,Orthopedics,Fracture
+0,1,1,1,1,14,Pediatrics,Child Fever
+1,0,0,0,1,66,Cardiology,Heart Disease
+1,0,0,1,0,25,Orthopedics,Fracture
+1,0,1,0,1,58,Cardiology,Heart Disease
+1,1,0,1,1,70,Cardiology,Heart Disease
+0,1,0,1,0,8,Neurology,Migraine
+0,1,1,1,0,68,Orthopedics,Fracture
+1,0,1,1,1,47,Cardiology,Heart Disease
+0,0,1,1,1,13,Pediatrics,Child Fever
+1,1,1,1,0,17,Pediatrics,Child Fever
+1,0,0,1,1,55,Cardiology,Heart Disease
+1,0,1,0,1,23,Cardiology,Heart Disease
+0,0,1,0,0,58,General Medicine,Flu
+1,0,0,1,1,48,Cardiology,Heart Disease
+0,1,0,0,0,16,Neurology,Migraine
+0,0,1,0,0,22,General Medicine,Flu
+0,0,0,1,1,16,Orthopedics,Fracture
+0,0,1,0,0,78,General Medicine,Flu
+1,0,0,0,1,62,Cardiology,Heart Disease
+1,0,1,1,1,48,Cardiology,Heart Disease
+0,0,1,0,1,23,Emergency,Pneumonia
+1,1,1,0,1,34,Cardiology,Heart Disease
+1,0,1,1,0,58,Orthopedics,Fracture
+1,0,1,0,0,4,Pediatrics,Child Fever
+1,1,1,0,1,32,Cardiology,Heart Disease
+0,1,1,1,1,35,Orthopedics,Fracture
+1,0,0,0,0,43,General Medicine,Flu
+0,1,0,0,0,40,Neurology,Migraine
+1,0,1,0,0,12,Pediatrics,Child Fever
+0,1,1,0,0,35,General Medicine,Flu
+0,0,1,1,0,26,Orthopedics,Fracture
+1,1,1,1,0,7,Pediatrics,Child Fever
+1,1,0,1,0,75,Neurology,Migraine
+0,1,1,0,0,36,General Medicine,Flu
+1,0,0,1,1,49,Cardiology,Heart Disease
+0,1,1,1,0,24,Orthopedics,Fracture
+0,1,1,0,1,55,Emergency,Pneumonia
+0,0,0,0,0,30,General Medicine,Flu
+0,0,1,1,1,89,Orthopedics,Fracture
+1,0,0,0,0,12,General Medicine,Flu
+0,0,0,1,0,71,Orthopedics,Fracture
+1,1,0,1,1,83,Cardiology,Heart Disease
+1,0,1,0,0,12,Pediatrics,Child Fever
+0,1,0,0,1,53,Neurology,Migraine
+0,1,0,0,0,53,Neurology,Migraine
+1,1,0,1,0,5,Neurology,Migraine
+0,0,0,0,0,18,General Medicine,Flu
+0,1,0,1,1,17,Neurology,Migraine
+0,1,0,1,0,40,Neurology,Migraine
+1,0,1,0,1,66,Cardiology,Heart Disease
+0,0,0,1,0,8,Orthopedics,Fracture
+1,0,0,1,1,17,Cardiology,Heart Disease
+0,0,0,0,1,36,General Medicine,Flu
+1,1,0,0,0,54,Neurology,Migraine
+0,0,1,1,0,39,Orthopedics,Fracture
+1,0,0,0,1,58,Cardiology,Heart Disease
+1,1,1,0,0,39,General Medicine,Flu
+0,0,0,1,1,63,Orthopedics,Fracture
+1,0,0,1,0,38,Orthopedics,Fracture
+0,1,1,1,0,32,Orthopedics,Fracture
+0,0,0,0,1,85,General Medicine,Flu
+0,1,0,1,0,19,Neurology,Migraine
+1,0,1,0,0,49,General Medicine,Flu
+1,0,0,0,0,54,General Medicine,Flu
+1,0,1,0,0,75,General Medicine,Flu
+1,1,1,1,1,76,Cardiology,Heart Disease
+1,1,0,1,1,36,Cardiology,Heart Disease
+1,1,1,1,1,28,Cardiology,Heart Disease
+1,0,0,1,1,27,Cardiology,Heart Disease
+1,0,0,0,0,84,General Medicine,Flu
+0,1,1,0,0,46,General Medicine,Flu
+0,0,1,1,0,69,Orthopedics,Fracture
+0,0,1,1,1,30,Orthopedics,Fracture
+1,0,0,0,0,33,General Medicine,Flu
+1,0,1,1,0,49,Orthopedics,Fracture
+0,0,1,0,0,86,General Medicine,Flu
+0,0,0,0,0,1,General Medicine,Flu
+0,1,0,1,1,81,Neurology,Migraine
+0,0,0,1,0,53,Orthopedics,Fracture
+0,0,0,0,1,74,General Medicine,Flu
+0,0,0,1,0,1,Orthopedics,Fracture
+0,0,0,1,1,65,Orthopedics,Fracture
+0,1,1,1,1,72,Orthopedics,Fracture
+0,1,1,1,1,3,Pediatrics,Child Fever
+0,1,1,0,1,5,Pediatrics,Child Fever
+1,1,0,0,0,47,Neurology,Migraine
+0,0,0,0,1,66,General Medicine,Flu
+0,0,0,1,1,38,Orthopedics,Fracture
+1,1,1,1,0,51,Orthopedics,Fracture
+0,1,1,0,1,88,Emergency,Pneumonia
+0,1,1,0,1,51,Emergency,Pneumonia
+0,0,0,1,1,56,Orthopedics,Fracture
+0,1,0,1,1,88,Neurology,Migraine
+0,1,1,0,1,77,Emergency,Pneumonia
+1,0,0,1,0,23,Orthopedics,Fracture
+0,1,0,0,1,16,Neurology,Migraine
+1,1,1,1,1,25,Cardiology,Heart Disease
+0,1,0,0,0,32,Neurology,Migraine
+1,0,1,0,0,21,General Medicine,Flu
+0,1,1,1,0,22,Orthopedics,Fracture
+0,1,0,0,0,12,Neurology,Migraine
+1,1,1,0,1,45,Cardiology,Heart Disease
+0,0,1,0,0,86,General Medicine,Flu
+0,1,1,0,0,48,General Medicine,Flu
+0,0,1,1,0,8,Pediatrics,Child Fever
+0,0,0,1,0,47,Orthopedics,Fracture
+0,1,1,1,1,28,Orthopedics,Fracture
+0,1,1,1,0,26,Orthopedics,Fracture
+1,0,1,0,0,3,Pediatrics,Child Fever
+0,0,1,0,0,18,General Medicine,Flu
+1,1,0,0,0,64,Neurology,Migraine
+0,0,0,1,1,39,Orthopedics,Fracture
+0,0,0,1,1,44,Orthopedics,Fracture
+0,0,0,1,0,68,Orthopedics,Fracture
+1,0,0,0,1,86,Cardiology,Heart Disease
+1,0,1,1,0,83,Orthopedics,Fracture
+1,0,0,1,1,26,Cardiology,Heart Disease
+1,1,0,1,0,70,Neurology,Migraine
+0,0,0,0,1,21,General Medicine,Flu
+1,1,0,1,1,75,Cardiology,Heart Disease
+1,1,1,0,1,55,Cardiology,Heart Disease
+0,0,0,0,0,40,General Medicine,Flu
+0,1,1,0,1,66,Emergency,Pneumonia
+1,1,0,1,0,6,Neurology,Migraine
+1,0,1,1,1,51,Cardiology,Heart Disease
+1,0,1,0,0,8,Pediatrics,Child Fever
+1,0,0,1,0,70,Orthopedics,Fracture
+1,1,1,0,1,20,Cardiology,Heart Disease
+0,1,0,0,1,14,Neurology,Migraine
+1,1,0,1,0,77,Neurology,Migraine
+0,0,0,1,1,10,Orthopedics,Fracture
+0,0,1,1,1,13,Pediatrics,Child Fever
+1,1,1,0,0,73,General Medicine,Flu
+0,0,0,0,1,38,General Medicine,Flu
+0,0,1,0,0,69,General Medicine,Flu
+1,1,1,1,1,75,Cardiology,Heart Disease
+0,1,1,0,0,1,Pediatrics,Child Fever
+1,1,1,1,1,72,Cardiology,Heart Disease
+0,0,0,1,1,30,Orthopedics,Fracture
+0,0,0,0,0,78,General Medicine,Flu
+1,1,1,0,0,42,General Medicine,Flu
+0,1,1,1,0,14,Pediatrics,Child Fever
+1,0,0,1,0,23,Orthopedics,Fracture
+0,0,0,0,0,66,General Medicine,Flu
+1,0,1,1,0,39,Orthopedics,Fracture
+0,1,1,0,0,51,General Medicine,Flu
+1,1,1,1,0,29,Orthopedics,Fracture
+0,1,1,0,0,36,General Medicine,Flu
+0,1,0,0,0,27,Neurology,Migraine
+0,0,1,1,1,66,Orthopedics,Fracture
+1,0,0,1,0,38,Orthopedics,Fracture
+0,0,0,1,0,88,Orthopedics,Fracture
+1,1,0,0,1,5,Cardiology,Heart Disease
+0,0,1,1,0,2,Pediatrics,Child Fever
+0,0,0,0,1,36,General Medicine,Flu
+1,0,0,0,1,11,Cardiology,Heart Disease
+1,1,1,1,1,72,Cardiology,Heart Disease
+0,0,1,1,0,12,Pediatrics,Child Fever
+1,0,1,1,1,89,Cardiology,Heart Disease
+0,0,1,1,0,76,Orthopedics,Fracture
+1,1,1,1,0,37,Orthopedics,Fracture
+1,0,1,0,1,31,Cardiology,Heart Disease
+1,0,1,0,0,78,General Medicine,Flu
+1,0,1,0,0,1,Pediatrics,Child Fever
+1,0,0,1,1,36,Cardiology,Heart Disease
+1,0,0,0,0,54,General Medicine,Flu
+0,0,1,0,0,47,General Medicine,Flu
+0,0,0,1,1,57,Orthopedics,Fracture
+0,1,0,0,0,25,Neurology,Migraine
+1,0,1,1,0,82,Orthopedics,Fracture
+0,1,0,0,1,43,Neurology,Migraine
+0,1,0,0,1,24,Neurology,Migraine
+0,0,1,1,0,88,Orthopedics,Fracture
+0,0,0,0,0,22,General Medicine,Flu
+1,1,1,0,0,71,General Medicine,Flu
+0,1,0,0,1,86,Neurology,Migraine
+1,0,0,1,0,71,Orthopedics,Fracture
+0,1,0,1,0,51,Neurology,Migraine
+0,1,0,1,1,30,Neurology,Migraine
+0,0,0,0,1,16,General Medicine,Flu
+1,0,1,0,1,47,Cardiology,Heart Disease
+1,1,1,1,0,38,Orthopedics,Fracture
+0,0,1,0,1,29,Emergency,Pneumonia
+0,0,0,1,1,74,Orthopedics,Fracture
+0,1,1,1,0,87,Orthopedics,Fracture
+0,1,1,1,0,8,Pediatrics,Child Fever
+0,0,0,0,1,87,General Medicine,Flu
+0,0,0,1,1,67,Orthopedics,Fracture
+0,0,1,0,1,34,Emergency,Pneumonia
+0,1,1,1,1,46,Orthopedics,Fracture
+0,1,1,1,0,54,Orthopedics,Fracture
+0,1,0,0,1,82,Neurology,Migraine
+0,1,0,0,0,85,Neurology,Migraine
+0,1,0,0,1,29,Neurology,Migraine
+1,1,1,0,0,69,General Medicine,Flu
+1,0,1,0,1,67,Cardiology,Heart Disease
+0,0,1,1,0,37,Orthopedics,Fracture
+1,1,1,0,1,53,Cardiology,Heart Disease
+1,0,1,1,1,24,Cardiology,Heart Disease
+0,1,1,1,0,87,Orthopedics,Fracture
+1,1,0,1,0,81,Neurology,Migraine
+1,0,1,1,0,25,Orthopedics,Fracture
+0,0,1,1,0,4,Pediatrics,Child Fever
+1,1,0,0,1,87,Cardiology,Heart Disease
+0,0,1,1,1,85,Orthopedics,Fracture
+1,1,0,1,1,17,Cardiology,Heart Disease
+0,0,1,1,1,87,Orthopedics,Fracture
+0,1,1,0,0,57,General Medicine,Flu
+0,1,0,1,1,12,Neurology,Migraine
+0,0,0,0,1,45,General Medicine,Flu
+0,1,0,1,1,46,Neurology,Migraine
+1,1,1,1,0,65,Orthopedics,Fracture
+0,0,1,0,1,29,Emergency,Pneumonia
+0,0,1,0,1,36,Emergency,Pneumonia

@@ -1,0 +1,71 @@
+.specialist-recommendation-page {
+  padding: 20px;
+  background-color: #f8f9fa;
+  min-height: 100vh;
+}
+
+.page-title {
+  color: #2c3e50;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.card {
+  border-radius: 12px;
+  border: none;
+  margin-bottom: 20px;
+}
+
+.card-header {
+  border-radius: 12px 12px 0 0 !important;
+  font-weight: 600;
+}
+
+.btn {
+  border-radius: 8px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.form-check-input:checked {
+  background-color: #0d6efd;
+  border-color: #0d6efd;
+}
+
+.badge {
+  font-weight: 500;
+  padding: 8px 16px;
+}
+
+.list-group-item {
+  border-left: none;
+  border-right: none;
+  padding: 12px 0;
+}
+
+.list-group-item:first-child {
+  border-top: none;
+}
+
+.list-group-item:last-child {
+  border-bottom: none;
+}
+
+.shadow-sm {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+}
+
+.bg-light {
+  background-color: #f8f9fa !important;
+}
+
+@media (max-width: 768px) {
+  .specialist-recommendation-page {
+    padding: 10px;
+  }
+}

@@ -1,0 +1,287 @@
+<!-- Auto-Admission Dashboard Section -->
+<!-- Add this to your Admin Dashboard page -->
+
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-robot"></i> Auto-Admission & Assignment System
+                    </h4>
+                    <small>ML-Powered Patient Admission Workflow</small>
+                </div>
+                <div class="card-body">
+                    <!-- System Status -->
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <div class="card bg-success text-white">
+                                <div class="card-body text-center">
+                                    <h5>Disease Predictor</h5>
+                                    <i class="fas fa-check-circle fa-2x"></i>
+                                    <p class="mb-0 mt-2">Active</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-info text-white">
+                                <div class="card-body text-center">
+                                    <h5>Department Router</h5>
+                                    <i class="fas fa-route fa-2x"></i>
+                                    <p class="mb-0 mt-2">Ready</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-warning text-white">
+                                <div class="card-body text-center">
+                                    <h5>Staff Assigner</h5>
+                                    <i class="fas fa-user-md fa-2x"></i>
+                                    <p class="mb-0 mt-2">ML-Based</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-secondary text-white">
+                                <div class="card-body text-center">
+                                    <h5>Total Admissions</h5>
+                                    <h2 class="mb-0">0</h2>
+                                    <p class="mb-0">Today</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Auto-Admission Form -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header bg-light">
+                                    <h5 class="mb-0">Patient Information</h5>
+                                </div>
+                                <div class="card-body">
+                                    <form id="autoAdmissionForm">
+                                        <div class="form-group">
+                                            <label>Patient Name</label>
+                                            <input type="text" class="form-control" id="patientName" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Age</label>
+                                            <input type="number" class="form-control" id="patientAge" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Gender</label>
+                                            <select class="form-control" id="patientGender">
+                                                <option>Male</option>
+                                                <option>Female</option>
+                                                <option>Other</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Prediction Type</label>
+                                            <select class="form-control" id="predictionType">
+                                                <option value="symptoms">Symptom-Based</option>
+                                                <option value="image">Image-Based (Skin)</option>
+                                            </select>
+                                        </div>
+                                        
+                                        <!-- Symptom Selection (shown for symptom-based) -->
+                                        <div id="symptomSection">
+                                            <div class="form-group">
+                                                <label>Select Symptoms</label>
+                                                <div class="border p-3" style="max-height: 200px; overflow-y: auto;">
+                                                    <div class="form-check">
+                                                        <input class="form-check-input" type="checkbox" value="fever" id="symptom_fever">
+                                                        <label class="form-check-label" for="symptom_fever">Fever</label>
+                                                    </div>
+                                                    <div class="form-check">
+                                                        <input class="form-check-input" type="checkbox" value="cough" id="symptom_cough">
+                                                        <label class="form-check-label" for="symptom_cough">Cough</label>
+                                                    </div>
+                                                    <div class="form-check">
+                                                        <input class="form-check-input" type="checkbox" value="headache" id="symptom_headache">
+                                                        <label class="form-check-label" for="symptom_headache">Headache</label>
+                                                    </div>
+                                                    <div class="form-check">
+                                                        <input class="form-check-input" type="checkbox" value="chest_pain" id="symptom_chest_pain">
+                                                        <label class="form-check-label" for="symptom_chest_pain">Chest Pain</label>
+                                                    </div>
+                                                    <!-- Add more symptoms as needed -->
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Image Upload (shown for image-based) -->
+                                        <div id="imageSection" style="display: none;">
+                                            <div class="form-group">
+                                                <label>Upload Skin Image</label>
+                                                <input type="file" class="form-control-file" id="skinImage" accept="image/*">
+                                            </div>
+                                        </div>
+                                        
+                                        <button type="submit" class="btn btn-primary btn-block mt-3">
+                                            <i class="fas fa-magic"></i> Auto-Admit & Assign
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Results Panel -->
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header bg-light">
+                                    <h5 class="mb-0">Admission Results</h5>
+                                </div>
+                                <div class="card-body" id="resultsPanel">
+                                    <div class="text-center text-muted py-5">
+                                        <i class="fas fa-clipboard-list fa-3x mb-3"></i>
+                                        <p>Submit patient information to see admission results</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript for Auto-Admission -->
+<script>
+// Toggle between symptom and image input
+document.getElementById('predictionType').addEventListener('change', function() {
+    const symptomSection = document.getElementById('symptomSection');
+    const imageSection = document.getElementById('imageSection');
+    
+    if (this.value === 'symptoms') {
+        symptomSection.style.display = 'block';
+        imageSection.style.display = 'none';
+    } else {
+        symptomSection.style.display = 'none';
+        imageSection.style.display = 'block';
+    }
+});
+
+// Handle form submission
+document.getElementById('autoAdmissionForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const resultsPanel = document.getElementById('resultsPanel');
+    resultsPanel.innerHTML = '<div class="text-center"><div class="spinner-border text-primary" role="status"></div><p class="mt-2">Processing admission...</p></div>';
+    
+    // Collect patient info
+    const patientInfo = {
+        name: document.getElementById('patientName').value,
+        age: document.getElementById('patientAge').value,
+        gender: document.getElementById('patientGender').value
+    };
+    
+    const predictionType = document.getElementById('predictionType').value;
+    
+    // Prepare request data
+    const requestData = {
+        patient_info: patientInfo,
+        prediction_type: predictionType
+    };
+    
+    if (predictionType === 'symptoms') {
+        // Collect selected symptoms
+        const symptoms = {};
+        document.querySelectorAll('#symptomSection input[type="checkbox"]').forEach(checkbox => {
+            symptoms[checkbox.value] = checkbox.checked ? 1 : 0;
+        });
+        requestData.symptoms = symptoms;
+    } else {
+        // Handle image upload (simplified - in production, convert to base64)
+        const imageFile = document.getElementById('skinImage').files[0];
+        if (imageFile) {
+            // In production, convert to base64 here
+            requestData.image = 'base64_encoded_image_data';
+        }
+    }
+    
+    try {
+        // Call auto-admission API
+        const response = await fetch('http://localhost:5001/auto_admit_and_assign', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestData)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            displayResults(result);
+        } else {
+            resultsPanel.innerHTML = `<div class="alert alert-danger"><strong>Error:</strong> ${result.error}</div>`;
+        }
+    } catch (error) {
+        resultsPanel.innerHTML = `<div class="alert alert-danger"><strong>Error:</strong> ${error.message}</div>`;
+    }
+});
+
+function displayResults(result) {
+    const summary = result.admission_summary;
+    const resultsPanel = document.getElementById('resultsPanel');
+    
+    let html = `
+        <div class="alert alert-success">
+            <h5><i class="fas fa-check-circle"></i> Admission Successful</h5>
+        </div>
+        
+        <h6 class="border-bottom pb-2">Disease Prediction</h6>
+        <div class="mb-3">
+            <strong>Predicted Disease:</strong> ${summary.predicted_disease}<br>
+            <strong>Confidence:</strong> <span class="badge badge-info">${(summary.confidence * 100).toFixed(1)}%</span>
+        </div>
+        
+        <h6 class="border-bottom pb-2">Department Routing</h6>
+        <div class="mb-3">
+            <strong>Department:</strong> ${summary.department}<br>
+            <strong>Specialist Type:</strong> ${summary.specialist_type}<br>
+            <strong>Urgency Level:</strong> <span class="badge badge-${getUrgencyBadge(summary.urgency_level)}">${summary.urgency_level.toUpperCase()}</span>
+        </div>
+        
+        <h6 class="border-bottom pb-2">Staff Assignment</h6>
+        <div class="mb-3">
+            <strong>Assigned Doctor:</strong> ${summary.assigned_doctor ? summary.assigned_doctor.name : 'N/A'}<br>
+            ${summary.assigned_doctor ? `<small class="text-muted">Suitability Score: ${summary.assigned_doctor.suitability_score.toFixed(1)}/100</small><br>` : ''}
+            <strong>Assigned Nurse:</strong> ${summary.assigned_nurse ? summary.assigned_nurse.name : 'N/A'}<br>
+            ${summary.assigned_nurse ? `<small class="text-muted">Suitability Score: ${summary.assigned_nurse.suitability_score.toFixed(1)}/100</small>` : ''}
+        </div>
+        
+        ${summary.requires_triage ? '<div class="alert alert-warning"><i class="fas fa-exclamation-triangle"></i> Manual triage recommended</div>' : ''}
+    `;
+    
+    resultsPanel.innerHTML = html;
+}
+
+function getUrgencyBadge(urgency) {
+    const badges = {
+        'low': 'success',
+        'medium': 'warning',
+        'high': 'danger',
+        'critical': 'dark'
+    };
+    return badges[urgency] || 'secondary';
+}
+</script>
+
+<!-- Required CSS (add to your stylesheet) -->
+<style>
+.card {
+    margin-bottom: 20px;
+}
+
+.form-check {
+    margin-bottom: 8px;
+}
+
+#resultsPanel {
+    min-height: 400px;
+}
+</style>

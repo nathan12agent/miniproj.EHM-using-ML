@@ -1,0 +1,262 @@
+<!-- Specialist Recommendation Form -->
+<!-- Add this to your admin dashboard or patient intake page -->
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-user-md"></i> Specialist Recommendation
+                    </h4>
+                    <small>Get specialist recommendation based on symptoms or disease</small>
+                </div>
+                <div class="card-body">
+                    <!-- Input Method Selection -->
+                    <div class="form-group">
+                        <label><strong>Input Method:</strong></label>
+                        <div class="btn-group btn-group-toggle w-100" data-toggle="buttons">
+                            <label class="btn btn-outline-primary active">
+                                <input type="radio" name="inputMethod" id="methodSymptoms" value="symptoms" checked> 
+                                Symptoms
+                            </label>
+                            <label class="btn btn-outline-primary">
+                                <input type="radio" name="inputMethod" id="methodDisease" value="disease"> 
+                                Disease Name
+                            </label>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <!-- Symptoms Input (Default) -->
+                    <div id="symptomsInput">
+                        <h5>Select Patient Symptoms:</h5>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="symptom_fever">
+                                    <label class="form-check-label" for="symptom_fever">Fever</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="symptom_cough">
+                                    <label class="form-check-label" for="symptom_cough">Cough</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="symptom_fatigue">
+                                    <label class="form-check-label" for="symptom_fatigue">Fatigue</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="symptom_headache">
+                                    <label class="form-check-label" for="symptom_headache">Headache</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="symptom_chest_pain">
+                                    <label class="form-check-label" for="symptom_chest_pain">Chest Pain</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="symptom_nausea">
+                                    <label class="form-check-label" for="symptom_nausea">Nausea</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="symptom_vomiting">
+                                    <label class="form-check-label" for="symptom_vomiting">Vomiting</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="symptom_dizziness">
+                                    <label class="form-check-label" for="symptom_dizziness">Dizziness</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="symptom_skin_rash">
+                                    <label class="form-check-label" for="symptom_skin_rash">Skin Rash</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="symptom_itching">
+                                    <label class="form-check-label" for="symptom_itching">Itching</label>
+                                </div>
+                            </div>
+                        </div>
+                        <small class="text-muted">Select all symptoms that apply</small>
+                    </div>
+
+                    <!-- Disease Input (Hidden by default) -->
+                    <div id="diseaseInput" style="display: none;">
+                        <div class="form-group">
+                            <label for="diseaseName"><strong>Disease Name:</strong></label>
+                            <input type="text" class="form-control" id="diseaseName" 
+                                   placeholder="e.g., Heart Disease, Diabetes, Migraine">
+                            <small class="text-muted">Enter the diagnosed disease name</small>
+                        </div>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <button type="button" class="btn btn-primary btn-lg btn-block mt-4" onclick="getSpecialistRecommendation()">
+                        <i class="fas fa-search"></i> Get Specialist Recommendation
+                    </button>
+                </div>
+            </div>
+
+            <!-- Results Card -->
+            <div class="card shadow mt-4" id="resultsCard" style="display: none;">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fas fa-check-circle"></i> Recommendation Result</h5>
+                </div>
+                <div class="card-body" id="resultsContent">
+                    <!-- Results will be inserted here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript -->
+<script>
+// Toggle between symptoms and disease input
+document.querySelectorAll('input[name="inputMethod"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+        const symptomsInput = document.getElementById('symptomsInput');
+        const diseaseInput = document.getElementById('diseaseInput');
+        
+        if (this.value === 'symptoms') {
+            symptomsInput.style.display = 'block';
+            diseaseInput.style.display = 'none';
+        } else {
+            symptomsInput.style.display = 'none';
+            diseaseInput.style.display = 'block';
+        }
+    });
+});
+
+// Get specialist recommendation
+async function getSpecialistRecommendation() {
+    const inputMethod = document.querySelector('input[name="inputMethod"]:checked').value;
+    const resultsCard = document.getElementById('resultsCard');
+    const resultsContent = document.getElementById('resultsContent');
+    
+    // Show loading
+    resultsCard.style.display = 'block';
+    resultsContent.innerHTML = '<div class="text-center"><div class="spinner-border text-primary" role="status"></div><p class="mt-2">Analyzing...</p></div>';
+    
+    let requestData = {};
+    
+    if (inputMethod === 'symptoms') {
+        // Collect selected symptoms
+        const symptoms = {};
+        document.querySelectorAll('#symptomsInput input[type="checkbox"]').forEach(checkbox => {
+            const symptomName = checkbox.id.replace('symptom_', '');
+            symptoms[symptomName] = checkbox.checked ? 1 : 0;
+        });
+        requestData.symptoms = symptoms;
+    } else {
+        // Get disease name
+        const diseaseName = document.getElementById('diseaseName').value.trim();
+        if (!diseaseName) {
+            resultsContent.innerHTML = '<div class="alert alert-warning">Please enter a disease name</div>';
+            return;
+        }
+        requestData.disease = diseaseName;
+    }
+    
+    try {
+        // Call API
+        const response = await fetch('http://localhost:5001/recommend_specialist', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestData)
+        });
+        
+        const result = await response.json();
+        
+        if (result.error) {
+            resultsContent.innerHTML = `<div class="alert alert-danger"><strong>Error:</strong> ${result.error}</div>`;
+            return;
+        }
+        
+        // Display results
+        displayResults(result);
+        
+    } catch (error) {
+        resultsContent.innerHTML = `<div class="alert alert-danger"><strong>Error:</strong> ${error.message}</div>`;
+    }
+}
+
+function displayResults(result) {
+    const resultsContent = document.getElementById('resultsContent');
+    
+    let confidenceBadge = 'success';
+    if (result.confidence < 0.5) confidenceBadge = 'warning';
+    if (result.confidence < 0.3) confidenceBadge = 'danger';
+    
+    let html = `
+        <div class="row">
+            <div class="col-md-12">
+                <h4 class="text-primary">
+                    <i class="fas fa-user-md"></i> Recommended Specialist
+                </h4>
+                <h2 class="text-success">${result.specialist}</h2>
+                <hr>
+            </div>
+        </div>
+        
+        <div class="row mt-3">
+            <div class="col-md-6">
+                <p><strong>Disease:</strong> ${result.disease || 'N/A'}</p>
+                <p><strong>Confidence:</strong> 
+                    <span class="badge badge-${confidenceBadge}">${(result.confidence * 100).toFixed(1)}%</span>
+                </p>
+                <p><strong>Method:</strong> ${result.method}</p>
+            </div>
+            <div class="col-md-6">
+                <div class="alert alert-info">
+                    <strong>Reasoning:</strong><br>
+                    ${result.reasoning}
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Show alternative predictions if available
+    if (result.top_predictions && result.top_predictions.length > 0) {
+        html += `
+            <div class="mt-3">
+                <h6>Alternative Diagnoses:</h6>
+                <ul class="list-group">
+        `;
+        result.top_predictions.slice(0, 3).forEach(pred => {
+            html += `
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    ${pred.disease}
+                    <span class="badge badge-primary badge-pill">${(pred.probability * 100).toFixed(1)}%</span>
+                </li>
+            `;
+        });
+        html += `</ul></div>`;
+    }
+    
+    resultsContent.innerHTML = html;
+}
+</script>
+
+<!-- Required CSS (add to your stylesheet) -->
+<style>
+.form-check {
+    margin-bottom: 10px;
+}
+
+.card {
+    margin-bottom: 20px;
+}
+
+#resultsCard {
+    animation: fadeIn 0.5s;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+</style>

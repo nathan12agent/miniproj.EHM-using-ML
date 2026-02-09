@@ -1,0 +1,21 @@
+staff_id,name,role,department,expertise,current_load,availability,shift_start,shift_end,experience_years,performance_score
+D001,Dr. Rajesh Mehta,doctor,Cardiology,"Heart Disease,Hypertension,Cardiac Arrest",2,1,09:00,17:00,15,0.92
+D002,Dr. Priya Sharma,doctor,Neurology,"Migraine,Stroke,Epilepsy",1,1,09:00,17:00,12,0.88
+D003,Dr. Amit Kumar,doctor,General Medicine,"Flu,Fever,Common Cold,Diabetes",3,1,08:00,16:00,8,0.85
+D004,Dr. Sarah Johnson,doctor,Cardiology,"Heart Disease,Arrhythmia",0,1,10:00,18:00,10,0.90
+D005,Dr. Michael Chen,doctor,Orthopedics,"Fracture,Arthritis,Back Pain",2,1,09:00,17:00,14,0.89
+D006,Dr. Emily Davis,doctor,Pediatrics,"Child Fever,Vaccination,Growth Issues",1,1,08:00,16:00,9,0.87
+D007,Dr. David Wilson,doctor,Neurology,"Headache,Seizure,Parkinson",0,1,14:00,22:00,11,0.91
+D008,Dr. Lisa Martinez,doctor,General Medicine,"Cough,Allergy,Infection",4,1,09:00,17:00,7,0.83
+D009,Dr. James Brown,doctor,Emergency,"Trauma,Accident,Critical Care",1,1,00:00,08:00,13,0.94
+D010,Dr. Maria Garcia,doctor,Cardiology,"Chest Pain,Heart Attack",1,0,17:00,01:00,16,0.93
+N001,Nurse Priya Sharma,nurse,Cardiology,"Cardiac Care,ICU",3,1,09:00,17:00,8,0.88
+N002,Nurse Anjali Verma,nurse,Neurology,"Neuro Care,Stroke Care",2,1,09:00,17:00,6,0.85
+N003,Nurse Ravi Kumar,nurse,General Medicine,"General Care,Vitals",4,1,08:00,16:00,5,0.82
+N004,Nurse Sunita Reddy,nurse,Cardiology,"Heart Monitoring",1,1,10:00,18:00,7,0.87
+N005,Nurse Vikram Singh,nurse,Orthopedics,"Fracture Care,Mobility",2,1,09:00,17:00,9,0.89
+N006,Nurse Kavita Patel,nurse,Pediatrics,"Child Care,Vaccination",1,1,08:00,16:00,6,0.86
+N007,Nurse Deepak Gupta,nurse,Neurology,"Neuro Monitoring",0,1,14:00,22:00,8,0.90
+N008,Nurse Meera Iyer,nurse,General Medicine,"Patient Care",5,1,09:00,17:00,4,0.80
+N009,Nurse Rahul Joshi,nurse,Emergency,"Emergency Care,Trauma",2,1,00:00,08:00,10,0.92
+N010,Nurse Pooja Nair,nurse,Cardiology,"ICU,Critical Care",2,0,17:00,01:00,11,0.91

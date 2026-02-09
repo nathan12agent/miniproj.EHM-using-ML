@@ -71,6 +71,14 @@ const patientSchema = new mongoose.Schema({
     notes: String
   }],
   
+  // Medical Info (for ML predictions and specialist recommendations)
+  medicalInfo: {
+    symptoms: [String],
+    disease: String,
+    recommendedSpecialist: String,
+    specialistConfidence: Number,
+  },
+  
   allergies: [{
     allergen: String,
     severity: {
@@ -123,6 +131,39 @@ const patientSchema = new mongoose.Schema({
     lastUpdated: {
       type: Date,
       default: Date.now
+    }
+  },
+  
+  // Auto-Assignment Metadata (from ML service)
+  autoAssignment: {
+    isAutoAssigned: {
+      type: Boolean,
+      default: false
+    },
+    predictedDisease: String,
+    diseaseConfidence: Number,
+    assignedDepartment: String,
+    assignedSpecialistType: String,
+    urgencyLevel: String,
+    assignedDoctor: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Doctor'
+    },
+    assignedNurse: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Nurse'
+    },
+    assignedBed: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Bed'
+    },
+    doctorConfidence: Number,
+    nurseConfidence: Number,
+    assignmentTimestamp: Date,
+    assignmentMethod: {
+      type: String,
+      enum: ['ml_auto', 'manual'],
+      default: 'manual'
     }
   },
   

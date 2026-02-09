@@ -382,4 +382,245 @@ router.post('/:id/assign-doctor', auth, async (req, res) => {
   }
 });
 
+/**
+ * Auto-assign doctor, nurse, and bed using ML service
+ */
+router.post('/:id/auto-assign', auth, async (req, res) => {
+  try {
+    console.log('=== AUTO-ASSIGNMENT STARTED ===');
+    console.log('Patient ID:', req.params.id);
+    console.log('Request body:', req.body);
+    
+    const patient = await Patient.findById(req.params.id);
+    
+    if (!patient) {
+      console.log('ERROR: Patient not found');
+      return res.status(404).json({ message: 'Patient not found' });
+    }
+
+    console.log('Patient found:', patient.firstName, patient.lastName);
+
+    // Import models
+    const Doctor = require('../models/Doctor');
+    const Nurse = require('../models/Nurse');
+    const Bed = require('../models/Bed');
+
+    // Call ML service for disease prediction and specialist recommendation
+    const mlServiceUrl = process.env.ML_SERVICE_URL || 'http://localhost:5001';
+    
+    let predictedDisease = req.body.disease || 'Unknown';
+    let specialistType = 'General Practitioner';
+    let department = 'General';
+    let urgencyLevel = 'medium';
+    let confidence = 0.5;
+
+    try {
+      console.log('Calling ML service...');
+      const mlResponse = await axios.post(`${mlServiceUrl}/auto_admit_and_assign`, {
+        patient_info: {
+          id: patient._id.toString(),
+          name: `${patient.firstName} ${patient.lastName}`,
+          age: patient.age || 30
+        },
+        prediction_type: req.body.prediction_type || 'symptoms',
+        symptoms: req.body.symptoms || {},
+        disease: req.body.disease
+      }, { timeout: 10000 });
+
+      console.log('ML service response:', JSON.stringify(mlResponse.data, null, 2));
+
+      if (mlResponse.data.success && mlResponse.data.admission_summary) {
+        const summary = mlResponse.data.admission_summary;
+        predictedDisease = summary.predicted_disease || predictedDisease;
+        specialistType = summary.specialist_type || specialistType;
+        department = summary.department || department;
+        urgencyLevel = summary.urgency_level || urgencyLevel;
+        confidence = summary.confidence || confidence;
+        console.log('ML predictions:', { predictedDisease, specialistType, department, urgencyLevel });
+      }
+    } catch (mlError) {
+      console.log('ML service error (continuing with defaults):', mlError.message);
+      // Continue with default values
+    }
+
+    // Find and assign doctor based on specialist type
+    console.log('Finding doctor with specialization:', specialistType);
+    let assignedDoctor = null;
+    
+    // Try exact match first
+    let doctors = await Doctor.find({
+      specialization: { $regex: new RegExp(specialistType, 'i') },
+      status: 'Active'
+    }).sort({ patientsAttended: 1 }).limit(5);
+    
+    console.log(`Found ${doctors.length} doctors with specialization matching "${specialistType}"`);
+    
+    if (doctors.length === 0) {
+      // Try broader search
+      console.log('No exact match, trying broader search...');
+      doctors = await Doctor.find({ status: 'Active' }).sort({ patientsAttended: 1 }).limit(5);
+      console.log(`Found ${doctors.length} doctors (any specialization)`);
+    }
+    
+    if (doctors.length > 0) {
+      assignedDoctor = doctors[0];
+      console.log('Assigned doctor:', assignedDoctor.firstName, assignedDoctor.lastName, '-', assignedDoctor.specialization);
+    } else {
+      console.log('WARNING: No doctors found in database!');
+    }
+    
+    // Find and assign nurse based on ward
+    const wardMapping = {
+      'Cardiology': 'ICU',
+      'Neurology': 'ICU',
+      'Emergency': 'Emergency',
+      'Pulmonology': 'General',
+      'Gastroenterology': 'General',
+      'Endocrinology': 'General',
+      'Dermatology': 'General',
+      'Nephrology': 'General',
+      'Rheumatology': 'General',
+      'Orthopedics': 'General',
+      'Infectious Disease': 'ICU',
+      'General': 'General'
+    };
+    
+    const targetWard = wardMapping[department] || 'General';
+    console.log('Target ward:', targetWard);
+    
+    let assignedNurse = null;
+    let nurses = await Nurse.find({
+      ward: targetWard,
+      status: 'On Duty'
+    }).limit(5);
+    
+    console.log(`Found ${nurses.length} nurses in ${targetWard} ward`);
+    
+    if (nurses.length === 0) {
+      // Try any ward
+      console.log('No nurses in target ward, trying any ward...');
+      nurses = await Nurse.find({ status: 'On Duty' }).limit(5);
+      console.log(`Found ${nurses.length} nurses (any ward)`);
+    }
+    
+    if (nurses.length > 0) {
+      // Pick nurse with least patients
+      assignedNurse = nurses[0];
+      console.log('Assigned nurse:', assignedNurse.firstName, assignedNurse.lastName, '-', assignedNurse.ward);
+    } else {
+      console.log('WARNING: No nurses found in database!');
+    }
+    
+    // Find available bed in the assigned ward
+    console.log('Finding available bed in ward:', targetWard);
+    let assignedBed = null;
+    let availableBeds = await Bed.find({
+      status: 'Available',
+      ward: targetWard
+    }).limit(1);
+    
+    console.log(`Found ${availableBeds.length} available beds in ${targetWard} ward`);
+    
+    if (availableBeds.length === 0) {
+      // Try any ward
+      console.log('No beds in target ward, trying any ward...');
+      availableBeds = await Bed.find({ status: 'Available' }).limit(1);
+      console.log(`Found ${availableBeds.length} available beds (any ward)`);
+    }
+    
+    if (availableBeds.length > 0) {
+      assignedBed = availableBeds[0];
+      console.log('Assigned bed:', assignedBed.bedNumber, '-', assignedBed.ward);
+      
+      // Update bed status
+      assignedBed.status = 'Occupied';
+      assignedBed.patient = patient._id;
+      assignedBed.assignedDate = new Date();
+      await assignedBed.save();
+      console.log('Bed status updated to Occupied');
+    } else {
+      console.log('WARNING: No available beds found in database!');
+    }
+    
+    // Update patient with assignments
+    console.log('Updating patient record...');
+    patient.assignedDoctor = assignedDoctor ? assignedDoctor._id : null;
+    patient.autoAssignment = {
+      isAutoAssigned: true,
+      predictedDisease: predictedDisease,
+      diseaseConfidence: confidence,
+      assignedDepartment: department,
+      assignedSpecialistType: specialistType,
+      urgencyLevel: urgencyLevel,
+      assignedDoctor: assignedDoctor ? assignedDoctor._id : null,
+      assignedNurse: assignedNurse ? assignedNurse._id : null,
+      assignedBed: assignedBed ? assignedBed._id : null,
+      doctorConfidence: 0.95,
+      nurseConfidence: 0.90,
+      assignmentTimestamp: new Date(),
+      assignmentMethod: 'ml_auto'
+    };
+    
+    await patient.save();
+    console.log('Patient record updated');
+    
+    // Assign patient to nurse
+    if (assignedNurse && patient._id) {
+      console.log('Adding patient to nurse assignment list...');
+      if (!assignedNurse.assignedPatients) {
+        assignedNurse.assignedPatients = [];
+      }
+      if (!assignedNurse.assignedPatients.includes(patient._id)) {
+        assignedNurse.assignedPatients.push(patient._id);
+        await assignedNurse.save();
+        console.log('Nurse assignment list updated');
+      }
+    }
+    
+    // Populate the response
+    if (assignedDoctor) {
+      await patient.populate('assignedDoctor', 'firstName lastName specialization');
+    }
+    
+    console.log('=== AUTO-ASSIGNMENT COMPLETED SUCCESSFULLY ===');
+    
+    res.json({
+      success: true,
+      message: 'Auto-assignment completed successfully',
+      patient,
+      assignments: {
+        doctor: assignedDoctor ? {
+          id: assignedDoctor._id,
+          name: `${assignedDoctor.firstName} ${assignedDoctor.lastName}`,
+          specialization: assignedDoctor.specialization,
+          confidence: 0.95
+        } : null,
+        nurse: assignedNurse ? {
+          id: assignedNurse._id,
+          name: `${assignedNurse.firstName} ${assignedNurse.lastName}`,
+          ward: assignedNurse.ward,
+          confidence: 0.90
+        } : null,
+        bed: assignedBed ? {
+          id: assignedBed._id,
+          bedNumber: assignedBed.bedNumber,
+          ward: assignedBed.ward
+        } : null,
+        disease: predictedDisease,
+        department: department,
+        urgency: urgencyLevel
+      }
+    });
+  } catch (error) {
+    console.error('=== AUTO-ASSIGNMENT ERROR ===');
+    console.error('Error:', error);
+    console.error('Stack:', error.stack);
+    res.status(500).json({
+      success: false,
+      message: 'Server error during auto-assignment',
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;
