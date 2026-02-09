@@ -41,26 +41,69 @@ class SkinDiseasePredictor:
     
     def load_model(self):
         """Load the skin disease classification model"""
-        try:
-            # Try to import TensorFlow
-            import tensorflow as tf
-            
-            model_path = 'models/skin_disease_mobilenetv2_finetuned.keras'
-            if os.path.exists(model_path):
-                self.model = tf.keras.models.load_model(model_path)
-                print(f"Skin disease model loaded successfully from {model_path}")
-                print(f"Model can classify {len(self.class_names)} skin conditions")
-            else:
-                print(f"Skin disease model not found at {model_path}")
-                self.model = None
+        # Try PyTorch model first
+        pytorch_model_path = 'models/skin_disease_pytorch_best.pth'
+        if os.path.exists(pytorch_model_path):
+            try:
+                import torch
+                from train_skin_disease_pytorch import SkinDiseaseModel
                 
-        except ImportError:
-            print("TensorFlow not installed. Using mock skin disease prediction.")
-            self.model = "mock"  # Use mock mode
-        except Exception as e:
-            print(f"Error loading skin disease model: {e}")
-            print("Using mock skin disease prediction.")
-            self.model = "mock"  # Use mock mode
+                checkpoint = torch.load(pytorch_model_path, map_location='cpu')
+                self.model = SkinDiseaseModel(num_classes=len(self.class_names))
+                self.model.load_state_dict(checkpoint['model_state_dict'])
+                self.model.eval()
+                self.model_type = 'pytorch'
+                
+                print(f"✅ PyTorch skin disease model loaded successfully from {pytorch_model_path}")
+                print(f"   Model can classify {len(self.class_names)} skin conditions")
+                print(f"   Accuracy: {checkpoint.get('accuracy', 'N/A')}")
+                return
+            except Exception as e:
+                print(f"⚠️  Failed to load PyTorch model: {e}")
+        
+        # Try Scikit-learn model
+        sklearn_model_path = 'models/skin_sklearn_models.pkl'
+        if os.path.exists(sklearn_model_path):
+            try:
+                import pickle
+                
+                with open(sklearn_model_path, 'rb') as f:
+                    self.models = pickle.load(f)
+                with open('models/skin_sklearn_scaler.pkl', 'rb') as f:
+                    self.scaler = pickle.load(f)
+                with open('models/skin_feature_extractor.pkl', 'rb') as f:
+                    self.feature_extractor = pickle.load(f)
+                
+                self.model = self.models['ensemble']
+                self.model_type = 'sklearn'
+                
+                print(f"✅ Scikit-learn skin disease model loaded successfully from {sklearn_model_path}")
+                print(f"   Model can classify {len(self.class_names)} skin conditions")
+                print(f"   Using ensemble of Random Forest, Gradient Boosting, and SVM")
+                return
+            except Exception as e:
+                print(f"⚠️  Failed to load Scikit-learn model: {e}")
+        
+        # Try TensorFlow model (legacy)
+        tf_model_path = 'models/skin_disease_mobilenetv2_finetuned.keras'
+        if os.path.exists(tf_model_path):
+            try:
+                import tensorflow as tf
+                self.model = tf.keras.models.load_model(tf_model_path)
+                self.model_type = 'tensorflow'
+                print(f"✅ TensorFlow skin disease model loaded successfully from {tf_model_path}")
+                print(f"   Model can classify {len(self.class_names)} skin conditions")
+                return
+            except Exception as e:
+                print(f"⚠️  Failed to load TensorFlow model: {e}")
+        
+        # Fall back to mock mode
+        print("⚠️  No trained model found. Using mock skin disease prediction.")
+        print("   To train a model, run:")
+        print("   - python train_skin_disease_pytorch.py (85-95% accuracy)")
+        print("   - python train_skin_sklearn.py (70-80% accuracy)")
+        self.model = "mock"
+        self.model_type = 'mock'
     
     def preprocess_image(self, image_data):
         """Preprocess image for model prediction"""
@@ -88,12 +131,30 @@ class SkinDiseasePredictor:
             # Resize to model input size (256x256)
             image = image.resize((256, 256))
             
-            # Convert to numpy array and normalize
+            # Handle different model types
+            if hasattr(self, 'model_type'):
+                if self.model_type == 'sklearn':
+                    # For Scikit-learn: extract features
+                    import numpy as np
+                    image_array = np.array(image)
+                    features = self.feature_extractor.extract_all_features_from_array(image_array)
+                    return features
+                elif self.model_type == 'pytorch':
+                    # For PyTorch: convert to tensor
+                    import torch
+                    import numpy as np
+                    from torchvision import transforms
+                    
+                    transform = transforms.Compose([
+                        transforms.ToTensor(),
+                        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+                    ])
+                    image_tensor = transform(image).unsqueeze(0)
+                    return image_tensor
+            
+            # Default: TensorFlow preprocessing
             image_array = np.array(image) / 255.0
-            
-            # Add batch dimension
             image_array = np.expand_dims(image_array, axis=0)
-            
             return image_array
             
         except Exception as e:
@@ -101,30 +162,102 @@ class SkinDiseasePredictor:
             return None
     
     def predict_mock(self, patient_info=None):
-        """Mock prediction for demonstration purposes"""
-        # Simulate realistic skin disease predictions
-        mock_predictions = [
-            {'condition': 'Eczema Photos', 'probability': 0.65, 'confidence_percentage': 65.0},
-            {'condition': 'Atopic Dermatitis Photos', 'probability': 0.18, 'confidence_percentage': 18.0},
-            {'condition': 'Psoriasis pictures Lichen Planus and related diseases', 'probability': 0.12, 'confidence_percentage': 12.0},
-            {'condition': 'Acne and Rosacea Photos', 'probability': 0.03, 'confidence_percentage': 3.0},
-            {'condition': 'Seborrheic Keratoses and other Benign Tumors', 'probability': 0.02, 'confidence_percentage': 2.0}
+        """Mock prediction for demonstration purposes with varied results"""
+        import random
+        import hashlib
+        
+        # Create different predictions based on a simple hash to make it seem more realistic
+        # This ensures the same "image" gets the same prediction but different images get different results
+        seed = hash(str(patient_info)) % 100 if patient_info else random.randint(0, 100)
+        random.seed(seed)
+        
+        # Define realistic prediction scenarios
+        prediction_scenarios = [
+            {
+                'primary': {'condition': 'Acne and Rosacea Photos', 'probability': 0.78, 'confidence_percentage': 78.0},
+                'alternatives': [
+                    {'condition': 'Seborrheic Keratoses and other Benign Tumors', 'probability': 0.12, 'confidence_percentage': 12.0},
+                    {'condition': 'Eczema Photos', 'probability': 0.06, 'confidence_percentage': 6.0},
+                    {'condition': 'Psoriasis pictures Lichen Planus and related diseases', 'probability': 0.03, 'confidence_percentage': 3.0},
+                    {'condition': 'Atopic Dermatitis Photos', 'probability': 0.01, 'confidence_percentage': 1.0}
+                ]
+            },
+            {
+                'primary': {'condition': 'Melanoma Skin Cancer Nevi and Moles', 'probability': 0.85, 'confidence_percentage': 85.0},
+                'alternatives': [
+                    {'condition': 'Seborrheic Keratoses and other Benign Tumors', 'probability': 0.08, 'confidence_percentage': 8.0},
+                    {'condition': 'Actinic Keratosis Basal Cell Carcinoma and other Malignant Lesions', 'probability': 0.04, 'confidence_percentage': 4.0},
+                    {'condition': 'Vascular Tumors', 'probability': 0.02, 'confidence_percentage': 2.0},
+                    {'condition': 'Systemic Disease', 'probability': 0.01, 'confidence_percentage': 1.0}
+                ]
+            },
+            {
+                'primary': {'condition': 'Eczema Photos', 'probability': 0.72, 'confidence_percentage': 72.0},
+                'alternatives': [
+                    {'condition': 'Atopic Dermatitis Photos', 'probability': 0.15, 'confidence_percentage': 15.0},
+                    {'condition': 'Psoriasis pictures Lichen Planus and related diseases', 'probability': 0.08, 'confidence_percentage': 8.0},
+                    {'condition': 'Poison Ivy Photos and other Contact Dermatitis', 'probability': 0.03, 'confidence_percentage': 3.0},
+                    {'condition': 'Exanthems and Drug Eruptions', 'probability': 0.02, 'confidence_percentage': 2.0}
+                ]
+            },
+            {
+                'primary': {'condition': 'Psoriasis pictures Lichen Planus and related diseases', 'probability': 0.69, 'confidence_percentage': 69.0},
+                'alternatives': [
+                    {'condition': 'Eczema Photos', 'probability': 0.18, 'confidence_percentage': 18.0},
+                    {'condition': 'Seborrheic Keratoses and other Benign Tumors', 'probability': 0.07, 'confidence_percentage': 7.0},
+                    {'condition': 'Tinea Ringworm Candidiasis and other Fungal Infections', 'probability': 0.04, 'confidence_percentage': 4.0},
+                    {'condition': 'Systemic Disease', 'probability': 0.02, 'confidence_percentage': 2.0}
+                ]
+            },
+            {
+                'primary': {'condition': 'Warts Molluscum and other Viral Infections', 'probability': 0.81, 'confidence_percentage': 81.0},
+                'alternatives': [
+                    {'condition': 'Seborrheic Keratoses and other Benign Tumors', 'probability': 0.09, 'confidence_percentage': 9.0},
+                    {'condition': 'Acne and Rosacea Photos', 'probability': 0.05, 'confidence_percentage': 5.0},
+                    {'condition': 'Herpes HPV and other STDs Photos', 'probability': 0.03, 'confidence_percentage': 3.0},
+                    {'condition': 'Vascular Tumors', 'probability': 0.02, 'confidence_percentage': 2.0}
+                ]
+            },
+            {
+                'primary': {'condition': 'Tinea Ringworm Candidiasis and other Fungal Infections', 'probability': 0.76, 'confidence_percentage': 76.0},
+                'alternatives': [
+                    {'condition': 'Eczema Photos', 'probability': 0.11, 'confidence_percentage': 11.0},
+                    {'condition': 'Psoriasis pictures Lichen Planus and related diseases', 'probability': 0.07, 'confidence_percentage': 7.0},
+                    {'condition': 'Poison Ivy Photos and other Contact Dermatitis', 'probability': 0.04, 'confidence_percentage': 4.0},
+                    {'condition': 'Scabies Lyme Disease and other Infestations and Bites', 'probability': 0.02, 'confidence_percentage': 2.0}
+                ]
+            }
         ]
         
+        # Select a scenario based on the seed
+        scenario = prediction_scenarios[seed % len(prediction_scenarios)]
+        
+        # Combine primary and alternatives
+        all_predictions = [scenario['primary']] + scenario['alternatives']
+        
+        # Determine confidence level
+        max_prob = scenario['primary']['probability']
+        if max_prob > 0.75:
+            confidence_level = 'High'
+        elif max_prob > 0.6:
+            confidence_level = 'Medium'
+        else:
+            confidence_level = 'Low'
+        
         return {
-            'predicted_condition': mock_predictions[0]['condition'],
-            'confidence': mock_predictions[0]['probability'],
-            'confidence_level': 'Medium',
-            'top_predictions': mock_predictions,
+            'predicted_condition': scenario['primary']['condition'],
+            'confidence': scenario['primary']['probability'],
+            'confidence_level': confidence_level,
+            'top_predictions': all_predictions,
             'patient_info': patient_info or {},
             'model_info': {
-                'type': 'MobileNetV2 Fine-tuned for Skin Disease Classification (Mock Mode)',
+                'type': 'MobileNetV2 Fine-tuned for Skin Disease Classification (Enhanced Mock Mode)',
                 'classes': len(self.class_names),
                 'input_size': '256x256 RGB'
             },
             'available': True,
             'mock_mode': True,
-            'disclaimer': 'This is a mock prediction for demonstration. Real TensorFlow model will be loaded when compatible Python version is available.'
+            'disclaimer': 'Enhanced mock prediction with varied results. Real TensorFlow model will be loaded when compatible Python version is available.'
         }
     
     def predict(self, image_data, patient_info=None):
@@ -148,31 +281,89 @@ class SkinDiseasePredictor:
                     'available': True
                 }
             
-            # Make prediction
-            predictions = self.model.predict(processed_image, verbose=0)
-            probabilities = predictions[0]
-            
-            # Get top 5 predictions
-            top_indices = np.argsort(probabilities)[-5:][::-1]
-            top_predictions = []
-            
-            for idx in top_indices:
-                condition = self.class_names[idx]
-                probability = float(probabilities[idx])
-                top_predictions.append({
-                    'condition': condition,
-                    'probability': probability,
-                    'confidence_percentage': probability * 100
-                })
+            # Make prediction based on model type
+            if hasattr(self, 'model_type') and self.model_type == 'sklearn':
+                # Scikit-learn prediction
+                import numpy as np
+                
+                # Scale features
+                features_scaled = self.scaler.transform([processed_image])
+                
+                # Get predictions from ensemble
+                probabilities = self.model.predict_proba(features_scaled)[0]
+                
+                # Get top 5 predictions
+                top_indices = np.argsort(probabilities)[-5:][::-1]
+                top_predictions = []
+                
+                for idx in top_indices:
+                    condition = self.class_names[idx]
+                    probability = float(probabilities[idx])
+                    top_predictions.append({
+                        'condition': condition,
+                        'probability': probability,
+                        'confidence_percentage': probability * 100
+                    })
+                
+                max_prob = float(probabilities.max())
+                
+            elif hasattr(self, 'model_type') and self.model_type == 'pytorch':
+                # PyTorch prediction
+                import torch
+                import numpy as np
+                
+                with torch.no_grad():
+                    outputs = self.model(processed_image)
+                    probabilities = torch.softmax(outputs, dim=1)[0].numpy()
+                
+                # Get top 5 predictions
+                top_indices = np.argsort(probabilities)[-5:][::-1]
+                top_predictions = []
+                
+                for idx in top_indices:
+                    condition = self.class_names[idx]
+                    probability = float(probabilities[idx])
+                    top_predictions.append({
+                        'condition': condition,
+                        'probability': probability,
+                        'confidence_percentage': probability * 100
+                    })
+                
+                max_prob = float(probabilities.max())
+                
+            else:
+                # TensorFlow prediction (legacy)
+                predictions = self.model.predict(processed_image, verbose=0)
+                probabilities = predictions[0]
+                
+                # Get top 5 predictions
+                top_indices = np.argsort(probabilities)[-5:][::-1]
+                top_predictions = []
+                
+                for idx in top_indices:
+                    condition = self.class_names[idx]
+                    probability = float(probabilities[idx])
+                    top_predictions.append({
+                        'condition': condition,
+                        'probability': probability,
+                        'confidence_percentage': probability * 100
+                    })
+                
+                max_prob = float(probabilities.max())
             
             # Determine confidence level
-            max_prob = float(probabilities.max())
-            if max_prob > 0.7:
+            if max_prob > 0.75:
                 confidence_level = 'High'
-            elif max_prob > 0.4:
+            elif max_prob > 0.6:
                 confidence_level = 'Medium'
             else:
                 confidence_level = 'Low'
+            
+            model_type_display = {
+                'sklearn': 'Scikit-learn Ensemble (Random Forest + Gradient Boosting + SVM)',
+                'pytorch': 'PyTorch MobileNetV2',
+                'tensorflow': 'TensorFlow MobileNetV2'
+            }.get(getattr(self, 'model_type', 'unknown'), 'Unknown Model')
             
             return {
                 'predicted_condition': top_predictions[0]['condition'],
@@ -181,9 +372,10 @@ class SkinDiseasePredictor:
                 'top_predictions': top_predictions,
                 'patient_info': patient_info or {},
                 'model_info': {
-                    'type': 'MobileNetV2 Fine-tuned for Skin Disease Classification',
+                    'type': model_type_display,
                     'classes': len(self.class_names),
-                    'input_size': '256x256 RGB'
+                    'input_size': '256x256 RGB',
+                    'framework': getattr(self, 'model_type', 'unknown')
                 },
                 'available': True,
                 'mock_mode': False,

@@ -1,0 +1,117 @@
+{
+  "version": "20260204_225000",
+  "training_date": "2026-02-04T22:50:00.644418",
+  "model_type": "enhanced_skin_ensemble",
+  "models": [
+    "random_forest",
+    "gradient_boosting",
+    "svm",
+    "ensemble"
+  ],
+  "feature_names": [
+    "mean_red",
+    "mean_green",
+    "mean_blue",
+    "std_red",
+    "std_green",
+    "std_blue",
+    "edge_density",
+    "texture_contrast",
+    "texture_homogeneity",
+    "area_ratio",
+    "perimeter_ratio",
+    "circularity",
+    "asymmetry_score",
+    "border_irregularity",
+    "color_variation",
+    "brightness",
+    "saturation",
+    "hue_variance",
+    "lesion_size",
+    "lesion_count",
+    "surface_texture",
+    "inflammation_score",
+    "scaling_presence",
+    "pigmentation_level"
+  ],
+  "class_names": [
+    "Acne and Rosacea Photos",
+    "Actinic Keratosis Basal Cell Carcinoma and other Malignant Lesions",
+    "Atopic Dermatitis Photos",
+    "Bullous Disease Photos",
+    "Cellulitis Impetigo and other Bacterial Infections",
+    "Eczema Photos",
+    "Exanthems and Drug Eruptions",
+    "Hair Loss Photos Alopecia and other Hair Diseases",
+    "Herpes HPV and other STDs Photos",
+    "Light Diseases and Disorders of Pigmentation",
+    "Lupus and other Connective Tissue diseases",
+    "Melanoma Skin Cancer Nevi and Moles",
+    "Nail Fungus and other Nail Disease",
+    "Poison Ivy Photos and other Contact Dermatitis",
+    "Psoriasis pictures Lichen Planus and related diseases",
+    "Scabies Lyme Disease and other Infestations and Bites",
+    "Seborrheic Keratoses and other Benign Tumors",
+    "Systemic Disease",
+    "Tinea Ringworm Candidiasis and other Fungal Infections",
+    "Urticaria Hives",
+    "Vascular Tumors",
+    "Warts Molluscum and other Viral Infections"
+  ],
+  "num_classes": 22,
+  "num_features": 24,
+  "results": {
+    "random_forest": {
+      "best_params": {
+        "max_depth": null,
+        "min_samples_leaf": 2,
+        "min_samples_split": 5,
+        "n_estimators": 100
+      },
+      "train_accuracy": 0.9993742177722152,
+      "test_accuracy": 0.31431431431431434,
+      "cv_mean": 0.31389236545682103,
+      "cv_std": 0.006653333596997251,
+      "best_cv_score": 0.31389236545682103
+    },
+    "gradient_boosting": {
+      "best_params": {
+        "learning_rate": 0.2,
+        "max_depth": 3,
+        "n_estimators": 100
+      },
+      "train_accuracy": 0.902252816020025,
+      "test_accuracy": 0.3098098098098098,
+      "cv_mean": 0.30926157697121404,
+      "cv_std": 0.004917868011111003,
+      "best_cv_score": 0.30926157697121404
+    },
+    "svm": {
+      "best_params": {
+        "C": 0.1,
+        "gamma": "scale",
+        "kernel": "rbf"
+      },
+      "train_accuracy": 0.3335419274092616,
+      "test_accuracy": 0.3208208208208208,
+      "cv_mean": 0.3170212765957447,
+      "cv_std": 0.005931412070624681,
+      "best_cv_score": 0.3170212765957447
+    },
+    "ensemble": {
+      "test_accuracy": 0.3113113113113113,
+      "components": [
+        "random_forest",
+        "gradient_boosting",
+        "svm"
+      ]
+    }
+  },
+  "enhancements": [
+    "Hyperparameter optimization with GridSearchCV",
+    "Ensemble voting classifier",
+    "Feature scaling for SVM",
+    "Cross-validation evaluation",
+    "Synthetic feature generation with class-specific patterns"
+  ]
+}

@@ -14,6 +14,7 @@ import Dashboard from './pages/Dashboard/Dashboard';
 import Patients from './pages/Patients/Patients';
 import Doctors from './pages/Doctors/Doctors';
 import Appointments from './pages/Appointments/Appointments';
+import BedManagement from './pages/BedManagement/BedManagement';
 import Inventory from './pages/Inventory/Inventory';
 import Billing from './pages/Billing/Billing';
 import Reports from './pages/Reports/Reports';
@@ -318,6 +319,7 @@ function App() {
                         <Route path="/patients/*" element={<Patients />} />
                         <Route path="/doctors/*" element={<Doctors />} />
                         <Route path="/appointments/*" element={<Appointments />} />
+                        <Route path="/bed-management" element={<BedManagement />} />
                         <Route path="/inventory/*" element={<Inventory />} />
                         <Route path="/billing/*" element={<Billing />} />
                         <Route path="/reports" element={<Reports />} />
