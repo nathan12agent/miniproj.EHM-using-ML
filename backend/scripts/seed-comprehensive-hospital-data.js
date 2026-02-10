@@ -40,16 +40,55 @@ const seedData = async () => {
     });
     console.log('✅ Admin created: admin@hospital.com / admin123');
 
-    // 2. Create Doctors (30 doctors across specializations)
+    // 2. Create Doctors (100 doctors across specializations for better auto-assignment)
     console.log('\n👨‍⚕️ Creating Doctors...');
     const doctorSpecializations = [
-      { name: 'Cardiology', count: 5, department: 'Cardiology' },
-      { name: 'Neurology', count: 4, department: 'Neurology' },
+      // Cardiology - Heart specialists
+      { name: 'Cardiologist', count: 12, department: 'Cardiology' },
+      { name: 'Cardiology', count: 8, department: 'Cardiology' },
+      
+      // Neurology - Brain and nervous system
+      { name: 'Neurologist', count: 10, department: 'Neurology' },
+      { name: 'Neurology', count: 6, department: 'Neurology' },
+      
+      // Gastroenterology - Digestive system
+      { name: 'Gastroenterologist', count: 8, department: 'Gastroenterology' },
+      
+      // Endocrinology - Hormones and metabolism
+      { name: 'Endocrinologist', count: 8, department: 'Endocrinology' },
+      
+      // Dermatology - Skin conditions
+      { name: 'Dermatologist', count: 6, department: 'Dermatology' },
+      
+      // Pulmonology - Respiratory system
+      { name: 'Pulmonologist', count: 8, department: 'Pulmonology' },
+      
+      // Nephrology - Kidney specialists
+      { name: 'Nephrologist', count: 6, department: 'Nephrology' },
+      
+      // Rheumatology - Joint and autoimmune
+      { name: 'Rheumatologist', count: 5, department: 'Rheumatology' },
+      
+      // Orthopedics - Bones and joints
+      { name: 'Orthopedic Surgeon', count: 6, department: 'Orthopedics' },
       { name: 'Orthopedics', count: 4, department: 'Orthopedics' },
-      { name: 'Pediatrics', count: 4, department: 'Pediatrics' },
-      { name: 'General Medicine', count: 5, department: 'General Ward' },
-      { name: 'Emergency Medicine', count: 4, department: 'ER' },
-      { name: 'ICU Specialist', count: 4, department: 'ICU' }
+      
+      // Infectious Disease
+      { name: 'Infectious Disease Specialist', count: 6, department: 'Infectious Disease' },
+      
+      // Allergist
+      { name: 'Allergist', count: 4, department: 'Allergy' },
+      
+      // General Surgery
+      { name: 'General Surgeon', count: 5, department: 'Surgery' },
+      
+      // General Practice
+      { name: 'General Practitioner', count: 10, department: 'General' },
+      { name: 'General Medicine', count: 8, department: 'General' },
+      
+      // Emergency and ICU
+      { name: 'Emergency Medicine', count: 8, department: 'Emergency' },
+      { name: 'ICU Specialist', count: 6, department: 'ICU' }
     ];
 
     const doctors = [];
@@ -104,30 +143,44 @@ const seedData = async () => {
     }
     console.log(`✅ Created ${doctors.length} doctors`);
 
-    // 3. Create Nurses (50 nurses across departments)
+    // 3. Create Nurses (150 nurses across departments for better coverage)
     console.log('\n👩‍⚕️ Creating Nurses...');
-    const nurseDepartments = ['ICU', 'ER', 'General Ward', 'Pediatrics', 'Cardiology', 'Neurology', 'Orthopedics'];
+    const nurseDepartments = [
+      { name: 'ICU', count: 25 },
+      { name: 'General', count: 40 },
+      { name: 'Emergency', count: 20 },
+      { name: 'Cardiology', count: 15 },
+      { name: 'Neurology', count: 12 },
+      { name: 'Orthopedics', count: 10 },
+      { name: 'Pediatrics', count: 10 },
+      { name: 'Gastroenterology', count: 8 },
+      { name: 'Endocrinology', count: 5 },
+      { name: 'Dermatology', count: 5 }
+    ];
     const nurses = [];
     
-    for (let i = 1; i <= 50; i++) {
-      const firstName = ['Anna', 'Emma', 'Olivia', 'Sophia', 'Isabella', 'Mia', 'Charlotte', 'Amelia'][Math.floor(Math.random() * 8)];
-      const lastName = ['Wilson', 'Moore', 'Taylor', 'Anderson', 'Thomas', 'Jackson', 'White', 'Harris'][Math.floor(Math.random() * 8)];
-      const department = nurseDepartments[Math.floor(Math.random() * nurseDepartments.length)];
-      
-      const nurse = await Nurse.create({
-        name: `${firstName} ${lastName}`,
-        email: `nurse.${firstName.toLowerCase()}${i}@hospital.com`,
-        phone: `+1${Math.floor(Math.random() * 9000000000 + 1000000000)}`,
-        department,
-        shift: ['Morning', 'Evening', 'Night'][Math.floor(Math.random() * 3)],
-        experience: Math.floor(Math.random() * 15) + 2,
-        qualification: 'BSN, RN',
-        specialization: department,
-        assignedBeds: [], // Will be assigned later
-        currentStatus: Math.random() > 0.3 ? 'On-Duty' : 'Off-Duty'
-      });
-      
-      nurses.push(nurse);
+    for (const dept of nurseDepartments) {
+      for (let i = 1; i <= dept.count; i++) {
+        const firstName = ['Anna', 'Emma', 'Olivia', 'Sophia', 'Isabella', 'Mia', 'Charlotte', 'Amelia', 'Harper', 'Evelyn', 'Abigail', 'Emily', 'Elizabeth', 'Sofia', 'Avery', 'Ella', 'Scarlett', 'Grace', 'Chloe', 'Victoria'][Math.floor(Math.random() * 20)];
+        const lastName = ['Wilson', 'Moore', 'Taylor', 'Anderson', 'Thomas', 'Jackson', 'White', 'Harris', 'Martin', 'Thompson', 'Garcia', 'Martinez', 'Robinson', 'Clark', 'Rodriguez', 'Lewis', 'Lee', 'Walker', 'Hall', 'Allen'][Math.floor(Math.random() * 20)];
+        
+        const nurse = await Nurse.create({
+          firstName,
+          lastName,
+          email: `nurse.${firstName.toLowerCase()}.${lastName.toLowerCase()}${Date.now()}${i}@hospital.com`,
+          phone: `+1${Math.floor(Math.random() * 9000000000 + 1000000000)}`,
+          ward: dept.name,
+          shift: ['Morning', 'Evening', 'Night'][Math.floor(Math.random() * 3)],
+          experience: Math.floor(Math.random() * 15) + 2,
+          qualification: 'BSN, RN',
+          specialization: dept.name,
+          status: Math.random() > 0.2 ? 'On Duty' : 'Off Duty',
+          workingHours: [8, 10, 12][Math.floor(Math.random() * 3)],
+          maxPatientLoad: Math.floor(Math.random() * 3) + 4 // 4-6 patients
+        });
+        
+        nurses.push(nurse);
+      }
     }
     console.log(`✅ Created ${nurses.length} nurses`);
 
@@ -171,14 +224,15 @@ const seedData = async () => {
     }
     console.log(`✅ Created ${staffMembers.length} staff members`);
 
-    // 5. Create Beds (100 beds across departments)
+    // 5. Create Beds (200 beds across departments for better availability)
     console.log('\n🛏️  Creating Beds...');
     const bedDepartments = [
-      { name: 'ICU', count: 20, type: 'ICU' },
-      { name: 'ER', count: 15, type: 'Emergency' },
-      { name: 'General Ward', count: 40, type: 'General' },
-      { name: 'Pediatrics', count: 15, type: 'Pediatric' },
-      { name: 'Cardiology', count: 10, type: 'Special' }
+      { name: 'ICU', count: 40, type: 'ICU' },
+      { name: 'Emergency', count: 30, type: 'Emergency' },
+      { name: 'General', count: 80, type: 'General' },
+      { name: 'Cardiology', count: 20, type: 'Special' },
+      { name: 'Neurology', count: 15, type: 'Special' },
+      { name: 'Orthopedics', count: 15, type: 'Special' }
     ];
 
     const beds = [];
@@ -356,16 +410,29 @@ const seedData = async () => {
     console.log('═'.repeat(60));
     console.log(`👤 Admin Users: 1`);
     console.log(`👨‍⚕️ Doctors: ${doctors.length}`);
-    console.log(`   - Cardiology: ${doctors.filter(d => d.specialization === 'Cardiology').length}`);
-    console.log(`   - Neurology: ${doctors.filter(d => d.specialization === 'Neurology').length}`);
-    console.log(`   - Orthopedics: ${doctors.filter(d => d.specialization === 'Orthopedics').length}`);
-    console.log(`   - Pediatrics: ${doctors.filter(d => d.specialization === 'Pediatrics').length}`);
-    console.log(`   - General Medicine: ${doctors.filter(d => d.specialization === 'General Medicine').length}`);
-    console.log(`   - Emergency Medicine: ${doctors.filter(d => d.specialization === 'Emergency Medicine').length}`);
-    console.log(`   - ICU Specialist: ${doctors.filter(d => d.specialization === 'ICU Specialist').length}`);
+    console.log(`   - Cardiologist: ${doctors.filter(d => d.specialization.includes('Cardio')).length}`);
+    console.log(`   - Neurologist: ${doctors.filter(d => d.specialization.includes('Neuro')).length}`);
+    console.log(`   - Gastroenterologist: ${doctors.filter(d => d.specialization.includes('Gastro')).length}`);
+    console.log(`   - Endocrinologist: ${doctors.filter(d => d.specialization.includes('Endocrin')).length}`);
+    console.log(`   - Dermatologist: ${doctors.filter(d => d.specialization.includes('Dermat')).length}`);
+    console.log(`   - Pulmonologist: ${doctors.filter(d => d.specialization.includes('Pulmon')).length}`);
+    console.log(`   - Nephrologist: ${doctors.filter(d => d.specialization.includes('Nephro')).length}`);
+    console.log(`   - Rheumatologist: ${doctors.filter(d => d.specialization.includes('Rheumat')).length}`);
+    console.log(`   - Orthopedic: ${doctors.filter(d => d.specialization.includes('Orthoped')).length}`);
+    console.log(`   - Infectious Disease: ${doctors.filter(d => d.specialization.includes('Infectious')).length}`);
+    console.log(`   - Allergist: ${doctors.filter(d => d.specialization.includes('Allergist')).length}`);
+    console.log(`   - General Surgeon: ${doctors.filter(d => d.specialization.includes('Surgeon')).length}`);
+    console.log(`   - General Practitioner: ${doctors.filter(d => d.specialization.includes('General')).length}`);
+    console.log(`   - Emergency Medicine: ${doctors.filter(d => d.specialization.includes('Emergency')).length}`);
+    console.log(`   - ICU Specialist: ${doctors.filter(d => d.specialization.includes('ICU')).length}`);
     console.log(`👩‍⚕️ Nurses: ${nurses.length}`);
-    console.log(`   - On-Duty: ${nurses.filter(n => n.currentStatus === 'On-Duty').length}`);
-    console.log(`   - Off-Duty: ${nurses.filter(n => n.currentStatus === 'Off-Duty').length}`);
+    console.log(`   - ICU: ${nurses.filter(n => n.ward === 'ICU').length}`);
+    console.log(`   - General: ${nurses.filter(n => n.ward === 'General').length}`);
+    console.log(`   - Emergency: ${nurses.filter(n => n.ward === 'Emergency').length}`);
+    console.log(`   - Cardiology: ${nurses.filter(n => n.ward === 'Cardiology').length}`);
+    console.log(`   - Neurology: ${nurses.filter(n => n.ward === 'Neurology').length}`);
+    console.log(`   - On-Duty: ${nurses.filter(n => n.status === 'On Duty').length}`);
+    console.log(`   - Off-Duty: ${nurses.filter(n => n.status === 'Off Duty').length}`);
     console.log(`👥 Staff Members: ${staffMembers.length}`);
     console.log(`   - Receptionists: ${staffMembers.filter(s => s.role === 'Receptionist').length}`);
     console.log(`   - Technicians: ${staffMembers.filter(s => s.role === 'Technician').length}`);
