@@ -22,6 +22,8 @@ import {
   FormControl,
   InputLabel,
   TextField,
+  Switch,
+  FormControlLabel,
 } from '@mui/material';
 import {
   Hotel as BedIcon,
@@ -31,6 +33,7 @@ import {
   Refresh as RefreshIcon,
   Info as InfoIcon,
   MedicalServices as DoctorIcon,
+  AutoMode as AutoIcon,
 } from '@mui/icons-material';
 import { bedsAPI, nursesAPI, patientsAPI, doctorsAPI } from '../services/api';
 import { toast } from 'react-toastify';
@@ -53,6 +56,8 @@ const BedManagementWidget = () => {
   const [selectedPatientIds, setSelectedPatientIds] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [autoAllocating, setAutoAllocating] = useState(false);
+  const [autoAllocationEnabled, setAutoAllocationEnabled] = useState(false);
   
   // New bed form state
   const [newBed, setNewBed] = useState({
@@ -369,6 +374,57 @@ const BedManagementWidget = () => {
     });
   };
 
+  const handleAutoAllocateAll = async () => {
+    const patientsWithoutBeds = getPatientsWithoutBeds();
+    
+    if (patientsWithoutBeds.length === 0) {
+      toast.info('All patients already have beds assigned');
+      return;
+    }
+
+    setAutoAllocating(true);
+    let successCount = 0;
+    let failCount = 0;
+
+    try {
+      toast.info(`Starting auto-allocation for ${patientsWithoutBeds.length} patients...`);
+
+      for (const patient of patientsWithoutBeds) {
+        try {
+          // Call auto-assign API for each patient
+          await patientsAPI.autoAssign(patient._id, {
+            prediction_type: 'disease',
+            disease: patient.medicalInfo?.disease || 'Unknown',
+            symptoms: patient.medicalInfo?.symptoms || []
+          });
+          
+          successCount++;
+          console.log(`✅ Auto-assigned: ${patient.firstName} ${patient.lastName}`);
+        } catch (error) {
+          failCount++;
+          console.error(`❌ Failed to auto-assign: ${patient.firstName} ${patient.lastName}`, error);
+        }
+      }
+
+      // Refresh all data
+      await fetchAllData();
+
+      // Show results
+      if (successCount > 0 && failCount === 0) {
+        toast.success(`🎉 Successfully auto-allocated ${successCount} patient(s)!`);
+      } else if (successCount > 0 && failCount > 0) {
+        toast.warning(`Auto-allocated ${successCount} patient(s), ${failCount} failed`);
+      } else {
+        toast.error(`Failed to auto-allocate patients. Please try again.`);
+      }
+    } catch (error) {
+      console.error('Error in auto-allocation:', error);
+      toast.error('Auto-allocation failed');
+    } finally {
+      setAutoAllocating(false);
+    }
+  };
+
   const getBedColor = (status) => {
     switch (status) {
       case 'Occupied':
@@ -648,9 +704,36 @@ const BedManagementWidget = () => {
     <Box>
       {/* Header */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h5" sx={{ fontWeight: 700, color: '#dc2626' }}>
-          Bed & Nurse Management
-        </Typography>
+        <Box>
+          <Typography variant="h5" sx={{ fontWeight: 700, color: '#dc2626' }}>
+            Bed & Nurse Management
+          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 1 }}>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={autoAllocationEnabled}
+                  onChange={(e) => setAutoAllocationEnabled(e.target.checked)}
+                  color="primary"
+                />
+              }
+              label={
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                  Auto-Allocation Mode
+                </Typography>
+              }
+            />
+            {autoAllocationEnabled && (
+              <Chip 
+                label="Auto-Allocation ON" 
+                color="success" 
+                size="small"
+                icon={<AutoIcon />}
+                sx={{ fontWeight: 600 }}
+              />
+            )}
+          </Box>
+        </Box>
         <Box sx={{ display: 'flex', gap: 1 }}>
           <Button
             variant="outlined"
@@ -792,15 +875,40 @@ const BedManagementWidget = () => {
         <Card>
           <CardContent>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-              <Typography variant="h6" sx={{ fontWeight: 600, color: '#dc2626' }}>
-                Patients Without Beds
-              </Typography>
-              <Chip 
-                label={`${getPatientsWithoutBeds().length} patients`} 
-                color="warning"
-                sx={{ fontWeight: 600 }}
-              />
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Typography variant="h6" sx={{ fontWeight: 600, color: '#dc2626' }}>
+                  Patients Without Beds
+                </Typography>
+                <Chip 
+                  label={`${getPatientsWithoutBeds().length} patients`} 
+                  color="warning"
+                  sx={{ fontWeight: 600 }}
+                />
+              </Box>
+              {autoAllocationEnabled && getPatientsWithoutBeds().length > 0 && (
+                <Button
+                  variant="contained"
+                  color="success"
+                  startIcon={autoAllocating ? <CircularProgress size={20} color="inherit" /> : <AutoIcon />}
+                  onClick={handleAutoAllocateAll}
+                  disabled={autoAllocating || loading}
+                  sx={{ fontWeight: 600 }}
+                >
+                  {autoAllocating ? 'Auto-Allocating...' : 'Auto-Allocate All'}
+                </Button>
+              )}
             </Box>
+            
+            {autoAllocationEnabled && getPatientsWithoutBeds().length > 0 && (
+              <Alert severity="info" sx={{ mb: 2 }}>
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                  🤖 Auto-Allocation Mode is ON
+                </Typography>
+                <Typography variant="caption">
+                  Click "Auto-Allocate All" to automatically assign beds and nurses to all patients without beds using ML-powered recommendations.
+                </Typography>
+              </Alert>
+            )}
             
             {getPatientsWithoutBeds().length === 0 ? (
               <Alert severity="success">
@@ -862,6 +970,11 @@ const BedManagementWidget = () => {
                             sx={{ fontSize: '0.7rem', fontWeight: 600 }}
                           />
                         </Box>
+                        {patient.medicalInfo?.disease && (
+                          <Typography variant="caption" display="block" sx={{ mt: 1, color: 'text.secondary' }}>
+                            🏥 {patient.medicalInfo.disease}
+                          </Typography>
+                        )}
                       </CardContent>
                     </Card>
                   </Grid>
