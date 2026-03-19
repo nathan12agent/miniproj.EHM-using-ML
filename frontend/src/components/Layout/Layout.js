@@ -32,6 +32,8 @@ import {
   Logout as LogoutIcon,
   Notifications as NotificationsIcon,
   Settings as SettingsIcon,
+  HealthAndSafety as InsuranceIcon,
+  Payment as PaymentIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
@@ -49,6 +51,8 @@ const menuItems = [
   { text: 'Billing', icon: <BillingIcon />, path: '/admin/billing' },
   { text: 'Reports', icon: <ReportsIcon />, path: '/admin/reports' },
   { text: 'ML Dashboard', icon: <MLIcon />, path: '/admin/ml-dashboard' },
+  { text: 'Insurance Claims', icon: <InsuranceIcon />, path: '/admin/insurance' },
+  { text: 'Payments', icon: <PaymentIcon />, path: '/payment/history' },
 ];
 
 function Layout({ children }) {

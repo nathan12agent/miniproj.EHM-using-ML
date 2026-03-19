@@ -3,6 +3,8 @@ import authReducer from './slices/authSlice';
 import patientsReducer from './slices/patientsSlice';
 import doctorsReducer from './slices/doctorsSlice';
 import appointmentsReducer from './slices/appointmentsSlice';
+import insuranceReducer from './slices/insuranceSlice';
+import paymentReducer from './slices/paymentSlice';
 
 export const store = configureStore({
   reducer: {
@@ -10,6 +12,8 @@ export const store = configureStore({
     patients: patientsReducer,
     doctors: doctorsReducer,
     appointments: appointmentsReducer,
+    insurance: insuranceReducer,
+    payment: paymentReducer,
   },
 });
 

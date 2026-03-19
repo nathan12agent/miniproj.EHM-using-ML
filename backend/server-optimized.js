@@ -204,6 +204,20 @@ const registerRoutes = () => {
   } catch (err) {
     console.error('❌ Error loading staff management routes:', err.message);
   }
+
+  try {
+    app.use('/api/insurance', require('./routes/insurance'));
+    console.log('✅ Insurance routes loaded');
+  } catch (err) {
+    console.error('❌ Error loading insurance routes:', err.message);
+  }
+
+  try {
+    app.use('/api/payment', require('./routes/payment'));
+    console.log('✅ Payment routes loaded');
+  } catch (err) {
+    console.error('❌ Error loading payment routes:', err.message);
+  }
 };
 
 // ============================================

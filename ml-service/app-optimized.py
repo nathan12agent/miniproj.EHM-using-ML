@@ -1,3 +1,7 @@
+# -*- coding: utf-8 -*-
+import sys
+import io
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import pandas as pd
@@ -19,6 +23,7 @@ _predictor = None
 _skin_predictor = None
 _auto_admission_service = None
 _specialist_recommender = None
+_fraud_detector = None
 
 def get_predictor():
     """Lazy load disease predictor"""
@@ -71,6 +76,19 @@ def get_specialist():
             print(f"❌ Error loading specialist recommender: {e}")
             _specialist_recommender = False
     return _specialist_recommender if _specialist_recommender is not False else None
+
+def get_fraud_detector():
+    """Lazy load insurance fraud detector"""
+    global _fraud_detector
+    if _fraud_detector is None:
+        try:
+            from insurance_fraud_detector import get_fraud_detector as load_detector
+            _fraud_detector = load_detector()
+            print("✅ Insurance fraud detector loaded")
+        except Exception as e:
+            print(f"❌ Error loading fraud detector: {e}")
+            _fraud_detector = False
+    return _fraud_detector if _fraud_detector is not False else None
 
 # ============================================
 # OPTIMIZATION 2: Simple prediction cache
@@ -456,6 +474,49 @@ def cache_stats():
         'ttl_seconds': CACHE_TTL,
         'max_size': 100
     })
+
+@app.route('/insurance/fraud_detect', methods=['POST'])
+def insurance_fraud_detect():
+    """Detect insurance fraud from claim features"""
+    detector = get_fraud_detector()
+    if not detector:
+        return jsonify({'error': 'Fraud detector not available'}), 503
+    
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+        
+        required = ['claimAmount', 'amountVsBenchmark', 'claimsLast90Days',
+                    'daysSinceLastClaim', 'isDuplicate', 'policyAgeDays',
+                    'patientAge', 'coverageUsedPct', 'diagnosisRiskScore']
+        missing = [f for f in required if f not in data]
+        if missing:
+            return jsonify({'error': f'Missing fields: {missing}'}), 400
+        
+        result = detector.predict(data)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/insurance/benchmarks', methods=['GET'])
+def insurance_benchmarks():
+    """Get diagnosis code benchmarks"""
+    detector = get_fraud_detector()
+    if not detector:
+        return jsonify({'error': 'Fraud detector not available'}), 503
+    return jsonify(detector.get_benchmarks())
+
+
+@app.route('/insurance/model_info', methods=['GET'])
+def insurance_model_info():
+    """Get fraud detection model info"""
+    detector = get_fraud_detector()
+    if not detector:
+        return jsonify({'error': 'Fraud detector not available'}), 503
+    return jsonify(detector.get_model_info())
+
 
 @app.errorhandler(404)
 def not_found(error):

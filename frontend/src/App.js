@@ -23,6 +23,14 @@ import StaffManagement from './pages/StaffManagement/StaffManagement';
 import SpecialistRecommendation from './pages/SpecialistRecommendation/SpecialistRecommendation';
 import ProtectedRoute from './components/ProtectedRoute/ProtectedRoute';
 
+// Insurance Pages
+import InsuranceDashboard from './pages/Insurance/InsuranceDashboard';
+import SubmitClaimForm from './components/Insurance/SubmitClaimForm';
+// Payment Pages
+import PaymentPortal from './pages/Payment/PaymentPortal';
+import PaymentHistory from './pages/Payment/PaymentHistory';
+import PaymentReceipt from './components/Payment/PaymentReceipt';
+
 // Doctor Portal Pages
 import DoctorLogin from './pages/DoctorLogin/DoctorLogin';
 import DoctorDashboard from './pages/DoctorDashboard/DoctorDashboard';
@@ -304,6 +312,11 @@ function App() {
                           <DiseaseHelper />
                         </DoctorLayout>
                       } />
+                      <Route path="/submit-claim" element={
+                        <DoctorLayout activeTab="submit-claim">
+                          <SubmitClaimForm />
+                        </DoctorLayout>
+                      } />
                     </Routes>
                   </ProtectedRoute>
                 }
@@ -328,12 +341,18 @@ function App() {
                         <Route path="/ml-dashboard" element={<MLDashboard />} />
                         <Route path="/staff-management" element={<StaffManagement />} />
                         <Route path="/specialist-recommendation" element={<SpecialistRecommendation />} />
+                        <Route path="/insurance" element={<InsuranceDashboard />} />
                       </Routes>
                     </Layout>
                   </ProtectedRoute>
                 }
               />
               
+              {/* Payment Routes */}
+              <Route path="/payment" element={<ProtectedRoute><PaymentPortal /></ProtectedRoute>} />
+              <Route path="/payment/history" element={<ProtectedRoute><PaymentHistory /></ProtectedRoute>} />
+              <Route path="/payment/receipt/:paymentId" element={<ProtectedRoute><PaymentReceipt /></ProtectedRoute>} />
+
               {/* Catch-all route - redirect to welcome page */}
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>

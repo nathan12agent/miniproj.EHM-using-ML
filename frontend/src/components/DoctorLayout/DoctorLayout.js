@@ -26,7 +26,8 @@ const DoctorLayout = ({ children, activeTab }) => {
 
   const tabs = [
     { id: 'dashboard', label: 'Dashboard', icon: '📊', path: '/doctor/dashboard' },
-    { id: 'disease-helper', label: 'Disease Helper', icon: '🩺', path: '/doctor/disease-helper' }
+    { id: 'disease-helper', label: 'Disease Helper', icon: '🩺', path: '/doctor/disease-helper' },
+    { id: 'submit-claim', label: 'Submit Claim', icon: '📋', path: '/doctor/submit-claim' }
   ];
 
   return (
