@@ -392,6 +392,37 @@ def get_diseases_by_specialist(specialist):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+# ── Insurance Fraud Detection ──────────────────────────────────────────────
+try:
+    from insurance_fraud_detector import get_fraud_detector
+    fraud_detector = get_fraud_detector()
+    print("Insurance fraud detector initialized")
+except Exception as e:
+    print(f"Error initializing fraud detector: {e}")
+    fraud_detector = None
+
+@app.route('/insurance/fraud_detect', methods=['POST'])
+def insurance_fraud_detect():
+    if not fraud_detector:
+        return jsonify({'fraudScore': 0.0, 'isFraud': False, 'reasons': []}), 200
+    try:
+        data = request.get_json()
+        result = fraud_detector.predict(
+            claimAmount=float(data.get('claimAmount', 0)),
+            diagnosisCode=data.get('diagnosisCode', ''),
+            patientId=str(data.get('patientId', '')),
+            policyNumber=str(data.get('policyNumber', ''))
+        )
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/insurance/benchmarks', methods=['GET'])
+def insurance_benchmarks():
+    if not fraud_detector:
+        return jsonify({}), 200
+    return jsonify(fraud_detector.get_benchmarks())
+
 @app.errorhandler(404)
 def not_found(error):
     return jsonify({'error': 'Endpoint not found'}), 404

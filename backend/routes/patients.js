@@ -306,16 +306,11 @@ router.put('/:id', auth, validatePatient, async (req, res) => {
  */
 router.delete('/:id', auth, async (req, res) => {
   try {
-    const patient = await Patient.findByIdAndUpdate(
-      req.params.id,
-      { status: 'Inactive', updatedBy: req.user.id },
-      { new: true }
-    );
+    const patient = await Patient.findById(req.params.id);
+    if (!patient) return res.status(404).json({ message: 'Patient not found' });
+    if (patient.isSeeded) return res.status(403).json({ message: 'Cannot delete seeded demo records' });
 
-    if (!patient) {
-      return res.status(404).json({ message: 'Patient not found' });
-    }
-
+    await Patient.findByIdAndUpdate(req.params.id, { status: 'Inactive', updatedBy: req.user.id }, { new: true });
     res.json({ message: 'Patient deleted successfully' });
   } catch (error) {
     console.error(error);

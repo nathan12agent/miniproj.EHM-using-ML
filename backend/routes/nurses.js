@@ -166,16 +166,13 @@ router.post('/:id/remove-patient', auth, [
 router.delete('/:id', auth, async (req, res) => {
   try {
     const nurse = await Nurse.findById(req.params.id);
-    if (!nurse) {
-      return res.status(404).json({ message: 'Nurse not found' });
-    }
-
+    if (!nurse) return res.status(404).json({ message: 'Nurse not found' });
+    if (nurse.isSeeded) return res.status(403).json({ message: 'Cannot delete seeded demo records' });
     if (nurse.assignedPatients && nurse.assignedPatients.length > 0) {
       return res.status(400).json({ message: 'Cannot delete nurse with assigned patients' });
     }
 
     await nurse.deleteOne();
-
     res.json({ message: 'Nurse deleted successfully' });
   } catch (error) {
     console.error(error);

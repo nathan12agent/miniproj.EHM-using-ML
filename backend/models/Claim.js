@@ -4,7 +4,7 @@ const claimSchema = new mongoose.Schema({
   claimId: {
     type: String,
     unique: true,
-    required: true
+    sparse: true
   },
   patientId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -18,8 +18,7 @@ const claimSchema = new mongoose.Schema({
   },
   doctorId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Doctor',
-    required: true
+    ref: 'Doctor'
   },
   diagnosisCode: {
     type: String,
@@ -68,6 +67,20 @@ const claimSchema = new mongoose.Schema({
     ref: 'User'
   },
   reviewedAt: {
+    type: Date
+  },
+  patientLiability: {
+    type: Number,
+    default: 0
+  },
+  adminNote: {
+    type: String
+  },
+  rejectionReason: {
+    type: String,
+    default: ''
+  },
+  refundedAt: {
     type: Date
   }
 }, {

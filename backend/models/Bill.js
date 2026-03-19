@@ -3,8 +3,7 @@ const mongoose = require('mongoose');
 const billSchema = new mongoose.Schema({
   billId: {
     type: String,
-    unique: true,
-    required: true
+    unique: true
   },
   patient: {
     type: mongoose.Schema.Types.ObjectId,
@@ -44,7 +43,7 @@ const billSchema = new mongoose.Schema({
   },
   paymentMethod: {
     type: String,
-    enum: ['Cash', 'Credit Card', 'Debit Card', 'Insurance', 'Online'],
+    enum: ['Cash', 'Credit Card', 'Debit Card', 'Insurance', 'Online', 'UPI', 'Card', 'NetBanking', 'Wallet', ''],
   },
   paidAmount: {
     type: Number,
@@ -55,6 +54,10 @@ const billSchema = new mongoose.Schema({
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
+  },
+  insuranceClaimId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Claim'
   }
 }, {
   timestamps: true
@@ -64,6 +67,10 @@ billSchema.pre('save', async function(next) {
   if (!this.billId) {
     const count = await this.constructor.countDocuments();
     this.billId = `BILL${String(count + 1).padStart(6, '0')}`;
+  }
+  // Normalize empty paymentMethod to undefined so it doesn't fail enum
+  if (this.paymentMethod === '') {
+    this.paymentMethod = undefined;
   }
   next();
 });

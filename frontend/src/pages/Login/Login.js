@@ -12,6 +12,7 @@ import {
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { loginStart, loginSuccess, loginFailure, clearError } from '../../store/slices/authSlice';
+import { authAPI } from '../../services/api';
 
 function Login() {
   const [formData, setFormData] = useState({
@@ -35,6 +36,7 @@ function Login() {
   }, [isAuthenticated, navigate]);
 
   useEffect(() => {
+    dispatch(clearError());
     return () => {
       dispatch(clearError());
     };
@@ -52,34 +54,22 @@ function Login() {
     dispatch(loginStart());
 
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
+      const response = await authAPI.login(formData);
+      const data = response.data;
 
-      const data = await response.json();
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      localStorage.setItem('userRole', data.user.role);
+      dispatch(loginSuccess(data));
 
-      if (response.ok) {
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('user', JSON.stringify(data.user));
-        localStorage.setItem('userRole', data.user.role);
-        dispatch(loginSuccess(data));
-        
-        // Redirect based on role
-        if (data.user.role === 'Doctor') {
-          navigate('/doctor/dashboard');
-        } else {
-          navigate('/admin/dashboard');
-        }
+      if (data.user.role === 'Doctor') {
+        navigate('/doctor/dashboard');
       } else {
-        dispatch(loginFailure(data.message || 'Login failed'));
+        navigate('/admin/dashboard');
       }
     } catch (error) {
-      console.error('Login error:', error);
-      dispatch(loginFailure('Network error. Please check if the backend server is running.'));
+      const message = error.response?.data?.message || 'Network error. Please check if the backend server is running.';
+      dispatch(loginFailure(message));
     }
   };
 

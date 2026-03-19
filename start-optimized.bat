@@ -1,6 +1,6 @@
 @echo off
 echo ================================================
-echo Starting Hospital Management System (Optimized)
+echo  Starting Hospital Management System
 echo ================================================
 echo.
 
@@ -8,7 +8,7 @@ REM Check if MongoDB is running
 echo Checking MongoDB...
 netstat -ano | findstr ":27017" >nul 2>&1
 if %errorlevel% neq 0 (
-    echo ❌ MongoDB not running on port 27017
+    echo [ERROR] MongoDB not running on port 27017
     echo.
     echo Please start MongoDB first:
     echo   Option 1: docker-compose up -d mongodb
@@ -17,61 +17,39 @@ if %errorlevel% neq 0 (
     pause
     exit /b 1
 )
-echo ✅ MongoDB is running
+echo [OK] MongoDB is running
 echo.
 
-REM Start Backend (Optimized)
-echo Starting Backend (Optimized)...
-start "Backend Server" cmd /k "cd backend && node server-optimized.js"
+REM Start Backend
+echo Starting Backend...
+start "Backend Server" cmd /k "cd /d %~dp0backend && node server.js"
 timeout /t 3 >nul
-echo ✅ Backend starting...
+echo [OK] Backend starting on port 5000
 echo.
 
-REM Start ML Service (Optimized)
-echo Starting ML Service (Optimized)...
-start "ML Service" cmd /k "cd ml-service && python app-optimized.py"
+REM Start ML Service
+echo Starting ML Service...
+start "ML Service" cmd /k "cd /d %~dp0ml-service && python app-optimized.py"
 timeout /t 3 >nul
-echo ✅ ML Service starting...
+echo [OK] ML Service starting on port 5001
 echo.
 
-REM Wait for services to initialize
-echo Waiting for services to initialize...
-timeout /t 5 >nul
-echo.
-
-REM Test Backend
-echo Testing Backend...
-curl -s http://localhost:5000/health >nul 2>&1
-if %errorlevel% equ 0 (
-    echo ✅ Backend is healthy
-) else (
-    echo ⚠️  Backend health check failed (may still be starting)
-)
-echo.
-
-REM Test ML Service
-echo Testing ML Service...
-curl -s http://localhost:5001/health >nul 2>&1
-if %errorlevel% equ 0 (
-    echo ✅ ML Service is healthy
-) else (
-    echo ⚠️  ML Service health check failed (may still be starting)
-)
+REM Start Frontend
+echo Starting Frontend...
+start "Frontend" cmd /k "cd /d %~dp0frontend && npm start"
+timeout /t 3 >nul
+echo [OK] Frontend starting on port 3000
 echo.
 
 echo ================================================
-echo Services Started!
+echo  All services started!
 echo ================================================
 echo.
-echo Backend:     http://localhost:5000
-echo ML Service:  http://localhost:5001
-echo API Docs:    http://localhost:5000/api-docs
+echo   Backend:    http://localhost:5000
+echo   ML Service: http://localhost:5001
+echo   Frontend:   http://localhost:3000
+echo   API Docs:   http://localhost:5000/api-docs
 echo.
-echo To start Frontend:
-echo   cd frontend ^&^& npm start
-echo.
-echo To stop services:
-echo   Close the terminal windows
-echo.
+echo Close the terminal windows to stop services.
 echo ================================================
 pause

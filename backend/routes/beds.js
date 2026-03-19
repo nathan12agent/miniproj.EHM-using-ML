@@ -209,16 +209,13 @@ router.put('/:id', auth, async (req, res) => {
 router.delete('/:id', auth, async (req, res) => {
   try {
     const bed = await Bed.findById(req.params.id);
-    if (!bed) {
-      return res.status(404).json({ message: 'Bed not found' });
-    }
-
+    if (!bed) return res.status(404).json({ message: 'Bed not found' });
+    if (bed.isSeeded) return res.status(403).json({ message: 'Cannot delete seeded demo records' });
     if (bed.status === 'Occupied') {
       return res.status(400).json({ message: 'Cannot delete occupied bed' });
     }
 
     await bed.deleteOne();
-
     res.json({ message: 'Bed deleted successfully' });
   } catch (error) {
     console.error(error);

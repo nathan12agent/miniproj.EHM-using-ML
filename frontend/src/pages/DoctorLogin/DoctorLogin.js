@@ -19,7 +19,7 @@ import { loginStart, loginSuccess, loginFailure, clearError } from '../../store/
 
 function DoctorLogin() {
   const [formData, setFormData] = useState({
-    username: '',
+    email: '',
     password: '',
     loginType: 'doctor',
   });
@@ -51,38 +51,27 @@ function DoctorLogin() {
     e.preventDefault();
     dispatch(loginStart());
 
-    // Demo doctor credentials
-    const doctorCredentials = [
-      { username: 'sarah.johnson', password: 'doctor123', name: 'Dr. Sarah Johnson', specialization: 'Cardiology', mlAccess: true },
-      { username: 'michael.chen', password: 'doctor123', name: 'Dr. Michael Chen', specialization: 'Neurology', mlAccess: true },
-      { username: 'emily.rodriguez', password: 'doctor123', name: 'Dr. Emily Rodriguez', specialization: 'Pediatrics', mlAccess: true },
-    ];
+    try {
+      const response = await fetch('/api/auth/doctor/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: formData.email, password: formData.password }),
+      });
+      const data = await response.json();
 
-    const doctor = doctorCredentials.find(
-      d => d.username === formData.username && d.password === formData.password
-    );
+      if (!response.ok) {
+        dispatch(loginFailure(data.message || 'Invalid credentials'));
+        return;
+      }
 
-    if (doctor) {
-      setTimeout(() => {
-        const mockUserData = {
-          user: {
-            id: doctor.username,
-            name: doctor.name,
-            username: doctor.username,
-            specialization: doctor.specialization,
-            role: 'doctor',
-            mlAccess: doctor.mlAccess,
-          },
-          token: 'doctor-jwt-token-' + Date.now(),
-        };
-        
-        dispatch(loginSuccess(mockUserData));
-        navigate('/doctor/dashboard');
-      }, 1000);
-    } else {
-      setTimeout(() => {
-        dispatch(loginFailure('Invalid credentials. Please use the demo doctor credentials.'));
-      }, 1000);
+      // Store doctor token separately so it doesn't conflict with admin token
+      localStorage.setItem('doctorToken', data.token);
+      localStorage.setItem('doctorUser', JSON.stringify(data.user));
+
+      dispatch(loginSuccess({ user: data.user, token: data.token }));
+      navigate('/doctor/dashboard');
+    } catch (err) {
+      dispatch(loginFailure('Network error. Is the backend running?'));
     }
   };
 
@@ -209,12 +198,12 @@ function DoctorLogin() {
               margin="normal"
               required
               fullWidth
-              id="username"
-              label="Username"
-              name="username"
-              autoComplete="username"
+              id="email"
+              label="Email"
+              name="email"
+              autoComplete="email"
               autoFocus
-              value={formData.username}
+              value={formData.email}
               onChange={handleChange}
               disabled={loading}
               sx={{
@@ -286,13 +275,10 @@ function DoctorLogin() {
                 🔐 Demo Doctor Credentials
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Username: sarah.johnson | Password: doctor123 (ML Access)
+                Use email format: doctor@hospital.com / demo123
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Username: emily.rodriguez | Password: doctor123 (ML Access)
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Username: michael.chen | Password: doctor123 (ML Access)
+                Or check seeded doctors in the database
               </Typography>
             </Box>
           </Box>

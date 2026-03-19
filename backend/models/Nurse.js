@@ -80,6 +80,11 @@ const nurseSchema = new mongoose.Schema({
   updatedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
+  },
+
+  isSeeded: {
+    type: Boolean,
+    default: false
   }
 }, {
   timestamps: true

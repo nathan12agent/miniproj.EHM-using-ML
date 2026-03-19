@@ -2,22 +2,19 @@ import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 
+// Admin/staff protected route — checks Redux auth state
 function ProtectedRoute({ children, allowedRoles = [] }) {
   const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
   const user = useSelector((state) => state.auth.user);
 
   if (!isAuthenticated) {
-    // Redirect to doctor login if trying to access doctor routes
-    if (allowedRoles.includes('Doctor')) {
-      return <Navigate to="/doctor/login" replace />;
-    }
     return <Navigate to="/login" replace />;
   }
 
-  // Check if user has required role
-  if (allowedRoles.length > 0 && !allowedRoles.includes(user?.role)) {
-    // Redirect based on user role
-    if (user?.role === 'Doctor') {
+  const userRole = user?.role?.toLowerCase();
+
+  if (allowedRoles.length > 0 && !allowedRoles.map(r => r.toLowerCase()).includes(userRole)) {
+    if (userRole === 'doctor') {
       return <Navigate to="/doctor/dashboard" replace />;
     }
     return <Navigate to="/admin/dashboard" replace />;

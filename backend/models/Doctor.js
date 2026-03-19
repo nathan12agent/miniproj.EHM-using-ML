@@ -217,7 +217,12 @@ const doctorSchema = new mongoose.Schema({
     issuedDate: Date,
     expiryDate: Date,
     certificateNumber: String
-  }]
+  }],
+
+  isSeeded: {
+    type: Boolean,
+    default: false
+  }
 }, {
   timestamps: true
 });

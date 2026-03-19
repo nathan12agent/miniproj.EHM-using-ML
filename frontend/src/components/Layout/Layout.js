@@ -23,6 +23,7 @@ import {
   Dashboard as DashboardIcon,
   People as PeopleIcon,
   LocalHospital as DoctorIcon,
+  PersonOutline as NurseIcon,
   Event as EventIcon,
   Inventory as InventoryIcon,
   Receipt as BillingIcon,
@@ -45,6 +46,7 @@ const menuItems = [
   { text: 'Dashboard', icon: <DashboardIcon />, path: '/admin/dashboard' },
   { text: 'Patients', icon: <PeopleIcon />, path: '/admin/patients' },
   { text: 'Doctors', icon: <DoctorIcon />, path: '/admin/doctors' },
+  { text: 'Nurses', icon: <NurseIcon />, path: '/admin/nurses' },
   { text: 'Appointments', icon: <EventIcon />, path: '/admin/appointments' },
   { text: 'Bed Management', icon: <BedIcon />, path: '/admin/bed-management' },
   { text: 'Inventory', icon: <InventoryIcon />, path: '/admin/inventory' },
@@ -52,7 +54,7 @@ const menuItems = [
   { text: 'Reports', icon: <ReportsIcon />, path: '/admin/reports' },
   { text: 'ML Dashboard', icon: <MLIcon />, path: '/admin/ml-dashboard' },
   { text: 'Insurance Claims', icon: <InsuranceIcon />, path: '/admin/insurance' },
-  { text: 'Payments', icon: <PaymentIcon />, path: '/payment/history' },
+  { text: 'Payment Portal', icon: <PaymentIcon />, path: '/admin/payment' },
 ];
 
 function Layout({ children }) {

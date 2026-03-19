@@ -4,7 +4,7 @@ const insurancePolicySchema = new mongoose.Schema({
   policyId: {
     type: String,
     unique: true,
-    required: true
+    sparse: true
   },
   patientId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -52,7 +52,12 @@ const insurancePolicySchema = new mongoose.Schema({
   coveredDiagnoses: [{
     type: String,
     trim: true
-  }]
+  }],
+
+  isSeeded: {
+    type: Boolean,
+    default: false
+  }
 }, {
   timestamps: true
 });

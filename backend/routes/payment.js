@@ -1,61 +1,111 @@
 const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
-const Razorpay = require('razorpay');
 const auth = require('../middleware/auth');
 const Payment = require('../models/Payment');
 const Bill = require('../models/Bill');
+const Claim = require('../models/Claim');
 
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID,
-  key_secret: process.env.RAZORPAY_KEY_SECRET
-});
+let Razorpay;
+try {
+  Razorpay = require('razorpay');
+} catch (e) {
+  console.warn('razorpay package not installed');
+}
+
+function getRazorpayInstance() {
+  if (!Razorpay) throw new Error('razorpay package not installed. Run: npm install razorpay');
+  return new Razorpay({
+    key_id: process.env.RAZORPAY_KEY_ID,
+    key_secret: process.env.RAZORPAY_KEY_SECRET,
+  });
+}
+
+function generateReceiptNumber() {
+  const now = new Date();
+  const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
+  const rand = Math.random().toString(36).substring(2, 8).toUpperCase();
+  return `RCP-${dateStr}-${rand}`;
+}
 
 // POST /api/payment/create-order
 router.post('/create-order', auth, async (req, res) => {
   try {
-    const { billId, billAmount, insuranceCovered, patientId, claimId } = req.body;
+    const { billId } = req.body;
+    if (!billId) return res.status(400).json({ message: 'billId is required' });
 
-    if (!billAmount || billAmount <= 0 || !Number.isInteger(Number(billAmount))) {
-      return res.status(400).json({ message: 'Invalid amount. Must be a positive integer (in paise).' });
+    const bill = await Bill.findById(billId).populate('patient', 'firstName lastName patientId');
+    if (!bill) return res.status(404).json({ message: 'Bill not found' });
+    if (bill.paymentStatus === 'Paid') return res.status(400).json({ message: 'Bill already paid' });
+
+    // Check for approved insurance claim
+    let insuranceCovered = 0;
+    let claimId = null;
+    if (bill.insuranceClaimId) {
+      const claim = await Claim.findById(bill.insuranceClaimId);
+      if (claim && claim.status === 'approved') {
+        insuranceCovered = claim.approvedAmount || 0;
+        claimId = claim._id;
+      }
     }
 
-    const patientLiability = billAmount - (insuranceCovered || 0);
-    const amountInPaise = Math.round(patientLiability * 100); // Convert to paise
+    const billAmount = bill.totalAmount || 0;
+    const amountDue = Math.max(0, billAmount - insuranceCovered);
 
-    if (amountInPaise <= 0) {
-      return res.status(400).json({ message: 'Patient liability must be greater than 0' });
+    // === PAYMENT DEBUG ===
+    console.log('=== PAYMENT DEBUG ===');
+    console.log('bill.totalAmount:', bill.totalAmount);
+    console.log('insuranceCovered:', insuranceCovered);
+    console.log('amountDue (rupees):', amountDue);
+    console.log('amountDue * 100 (paise):', Math.round(amountDue * 100));
+    console.log('====================');
+
+    // Guard: Razorpay test mode max is ₹5,00,000 = 5,00,00,000 paise
+    const amountInPaise = Math.round(amountDue * 100);
+    if (amountInPaise > 50000000) {
+      return res.status(400).json({
+        message: `Payment amount ₹${amountDue.toLocaleString('en-IN')} exceeds Razorpay test limit of ₹5,00,000. Please use a bill with a smaller amount.`
+      });
+    }
+    if (amountInPaise < 100) {
+      return res.status(400).json({ message: 'Payment amount too small. Minimum is ₹1.' });
     }
 
-    // Create payment record first to get paymentId
-    const payment = new Payment({
-      patientId: patientId || req.user._id,
-      billId,
-      claimId,
-      billAmount,
-      insuranceCovered: insuranceCovered || 0,
-      status: 'pending'
-    });
-    await payment.save();
-
-    // Create Razorpay order
+    const razorpay = getRazorpayInstance();
     const order = await razorpay.orders.create({
       amount: amountInPaise,
       currency: 'INR',
-      receipt: payment.paymentId,
-      notes: { paymentId: payment.paymentId }
+      receipt: `bill_${bill.billId}`,
+      notes: {
+        billId: bill._id.toString(),
+        patientId: bill.patient._id.toString(),
+      }
     });
 
-    payment.razorpayOrderId = order.id;
+    // Save pending payment record
+    const payment = new Payment({
+      patientId: bill.patient._id,
+      billId: bill._id,
+      claimId,
+      billAmount,
+      insuranceCovered,
+      patientLiability: amountDue,
+      amountDue,
+      amountPaid: 0,
+      razorpayOrderId: order.id,
+      status: 'pending',
+    });
     await payment.save();
 
     res.json({
       orderId: order.id,
-      keyId: process.env.RAZORPAY_KEY_ID,
-      amount: amountInPaise,
+      amount: amountDue,
       currency: 'INR',
-      paymentId: payment.paymentId,
-      receipt: payment.paymentId
+      keyId: process.env.RAZORPAY_KEY_ID,
+      billId: bill._id,
+      billDisplayId: bill.billId,
+      patientName: `${bill.patient.firstName} ${bill.patient.lastName}`,
+      insuranceCovered,
     });
   } catch (err) {
     console.error('Create order error:', err);
@@ -66,59 +116,68 @@ router.post('/create-order', auth, async (req, res) => {
 // POST /api/payment/verify
 router.post('/verify', auth, async (req, res) => {
   try {
-    const { razorpayOrderId, razorpayPaymentId, razorpaySignature, paymentMethod } = req.body;
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, billId } = req.body;
 
-    if (!razorpayOrderId || !razorpayPaymentId || !razorpaySignature) {
-      return res.status(400).json({ message: 'Missing payment verification fields' });
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+      return res.status(400).json({ message: 'Missing Razorpay payment details' });
     }
-
-    // Check for duplicate completed payment
-    const existing = await Payment.findOne({ razorpayOrderId, status: 'completed' });
-    if (existing) {
-      return res.status(409).json({ message: 'Payment already completed', payment: existing });
-    }
-
-    const payment = await Payment.findOne({ razorpayOrderId });
-    if (!payment) return res.status(404).json({ message: 'Payment record not found' });
 
     // Verify HMAC-SHA256 signature
-    const body = `${razorpayOrderId}|${razorpayPaymentId}`;
+    const body = razorpay_order_id + '|' + razorpay_payment_id;
     const expectedSignature = crypto
       .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
       .update(body)
       .digest('hex');
 
-    const isValid = crypto.timingSafeEqual(
-      Buffer.from(expectedSignature, 'hex'),
-      Buffer.from(razorpaySignature, 'hex')
-    );
-
-    if (!isValid) {
-      payment.status = 'failed';
-      await payment.save();
-      return res.status(400).json({ message: 'Invalid payment signature' });
+    if (expectedSignature !== razorpay_signature) {
+      return res.status(400).json({ message: 'Payment signature verification failed' });
     }
 
-    // Generate receipt number
-    const receiptCount = await Payment.countDocuments({ status: 'completed' });
-    const receiptNumber = `RCP${String(receiptCount + 1).padStart(6, '0')}`;
+    // Find the pending payment record
+    const payment = await Payment.findOne({ razorpayOrderId: razorpay_order_id });
+    if (!payment) return res.status(404).json({ message: 'Payment record not found' });
 
-    payment.razorpayPaymentId = razorpayPaymentId;
-    payment.razorpaySignature = razorpaySignature;
-    payment.status = 'completed';
-    payment.amountPaid = payment.patientLiability;
-    payment.paymentMethod = paymentMethod || 'UPI';
+    const receiptNumber = generateReceiptNumber();
+    const now = new Date();
+
+    payment.razorpayPaymentId = razorpay_payment_id;
+    payment.razorpaySignature = razorpay_signature;
+    payment.status = 'success';
+    payment.amountPaid = payment.amountDue;
     payment.receiptNumber = receiptNumber;
+    payment.paidAt = now;
     await payment.save();
 
-    // Update linked bill
-    if (payment.billId) {
-      await Bill.findByIdAndUpdate(payment.billId, { paymentStatus: 'Paid', paidAmount: payment.amountPaid });
+    // Update bill
+    const bill = await Bill.findById(payment.billId);
+    if (bill) {
+      bill.paymentStatus = 'Paid';
+      bill.paidAmount = payment.amountDue;
+      await bill.save();
     }
 
-    res.json({ message: 'Payment verified successfully', payment });
+    res.json({
+      success: true,
+      receiptNumber,
+      payment,
+      bill,
+    });
   } catch (err) {
-    console.error('Verify error:', err);
+    console.error('Verify payment error:', err);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// GET /api/payment/receipt/:billId
+router.get('/receipt/:billId', auth, async (req, res) => {
+  try {
+    const payment = await Payment.findOne({ billId: req.params.billId, status: 'success' })
+      .populate('patientId', 'firstName lastName patientId phone')
+      .populate('billId')
+      .populate('claimId', 'claimId diagnosisName approvedAmount patientLiability claimAmount');
+    if (!payment) return res.status(404).json({ message: 'Payment not found' });
+    res.json(payment);
+  } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
@@ -126,25 +185,11 @@ router.post('/verify', auth, async (req, res) => {
 // GET /api/payment/history
 router.get('/history', auth, async (req, res) => {
   try {
-    const payments = await Payment.find({ patientId: req.user._id })
+    const payments = await Payment.find()
       .sort({ createdAt: -1 })
-      .populate('billId', 'billId totalAmount')
+      .populate('patientId', 'firstName lastName patientId')
       .populate('claimId', 'claimId diagnosisName');
     res.json(payments);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
-
-// GET /api/payment/receipt/:paymentId
-router.get('/receipt/:paymentId', auth, async (req, res) => {
-  try {
-    const payment = await Payment.findOne({ paymentId: req.params.paymentId })
-      .populate('patientId', 'name patientId')
-      .populate('billId', 'billId totalAmount items')
-      .populate('claimId', 'claimId diagnosisName approvedAmount');
-    if (!payment) return res.status(404).json({ message: 'Payment not found' });
-    res.json(payment);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

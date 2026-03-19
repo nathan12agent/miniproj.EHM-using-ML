@@ -21,11 +21,14 @@ import Reports from './pages/Reports/Reports';
 import MLDashboard from './pages/MLDashboard/MLDashboard';
 import StaffManagement from './pages/StaffManagement/StaffManagement';
 import SpecialistRecommendation from './pages/SpecialistRecommendation/SpecialistRecommendation';
+import NurseManagement from './pages/Nurses/NurseManagement';
+import BedManagementNew from './pages/BedManagement/BedManagementNew';
 import ProtectedRoute from './components/ProtectedRoute/ProtectedRoute';
+import DoctorPrivateRoute from './components/DoctorPrivateRoute/DoctorPrivateRoute';
 
 // Insurance Pages
 import InsuranceDashboard from './pages/Insurance/InsuranceDashboard';
-import SubmitClaimForm from './components/Insurance/SubmitClaimForm';
+import SubmitClaim from './pages/DoctorDashboard/SubmitClaim';
 // Payment Pages
 import PaymentPortal from './pages/Payment/PaymentPortal';
 import PaymentHistory from './pages/Payment/PaymentHistory';
@@ -300,7 +303,7 @@ function App() {
               <Route
                 path="/doctor/*"
                 element={
-                  <ProtectedRoute>
+                  <DoctorPrivateRoute>
                     <Routes>
                       <Route path="/dashboard" element={
                         <DoctorLayout activeTab="dashboard">
@@ -314,11 +317,11 @@ function App() {
                       } />
                       <Route path="/submit-claim" element={
                         <DoctorLayout activeTab="submit-claim">
-                          <SubmitClaimForm />
+                          <SubmitClaim />
                         </DoctorLayout>
                       } />
                     </Routes>
-                  </ProtectedRoute>
+                  </DoctorPrivateRoute>
                 }
               />
               
@@ -342,6 +345,9 @@ function App() {
                         <Route path="/staff-management" element={<StaffManagement />} />
                         <Route path="/specialist-recommendation" element={<SpecialistRecommendation />} />
                         <Route path="/insurance" element={<InsuranceDashboard />} />
+                        <Route path="/payment" element={<PaymentPortal />} />
+                        <Route path="/nurses" element={<NurseManagement />} />
+                        <Route path="/bed-management-new" element={<BedManagementNew />} />
                       </Routes>
                     </Layout>
                   </ProtectedRoute>
@@ -349,7 +355,6 @@ function App() {
               />
               
               {/* Payment Routes */}
-              <Route path="/payment" element={<ProtectedRoute><PaymentPortal /></ProtectedRoute>} />
               <Route path="/payment/history" element={<ProtectedRoute><PaymentHistory /></ProtectedRoute>} />
               <Route path="/payment/receipt/:paymentId" element={<ProtectedRoute><PaymentReceipt /></ProtectedRoute>} />
 

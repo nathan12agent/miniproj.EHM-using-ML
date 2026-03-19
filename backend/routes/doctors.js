@@ -148,16 +148,11 @@ router.put('/:id', auth, async (req, res) => {
  */
 router.delete('/:id', auth, async (req, res) => {
   try {
-    const doctor = await Doctor.findByIdAndUpdate(
-      req.params.id,
-      { status: 'Inactive' },
-      { new: true }
-    );
+    const doctor = await Doctor.findById(req.params.id);
+    if (!doctor) return res.status(404).json({ message: 'Doctor not found' });
+    if (doctor.isSeeded) return res.status(403).json({ message: 'Cannot delete seeded demo records' });
 
-    if (!doctor) {
-      return res.status(404).json({ message: 'Doctor not found' });
-    }
-
+    await Doctor.findByIdAndUpdate(req.params.id, { status: 'Inactive' }, { new: true });
     res.json({ message: 'Doctor deleted successfully' });
   } catch (error) {
     console.error(error);

@@ -4,7 +4,7 @@ const paymentSchema = new mongoose.Schema({
   paymentId: {
     type: String,
     unique: true,
-    required: true
+    sparse: true
   },
   patientId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -33,6 +33,10 @@ const paymentSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  amountDue: {
+    type: Number,
+    default: 0
+  },
   amountPaid: {
     type: Number,
     default: 0
@@ -49,15 +53,25 @@ const paymentSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  paidAt: {
+    type: Date
+  },
   paymentMethod: {
     type: String,
     enum: ['UPI', 'Card', 'NetBanking', 'Wallet', 'Cash'],
-    default: 'UPI'
+    default: 'Cash'
   },
   status: {
     type: String,
-    enum: ['pending', 'completed', 'failed', 'refunded'],
+    enum: ['pending', 'success', 'failed', 'refunded'],
     default: 'pending'
+  },
+  refundReason: {
+    type: String,
+    default: ''
+  },
+  refundedAt: {
+    type: Date
   },
   receiptNumber: {
     type: String,
@@ -73,7 +87,6 @@ paymentSchema.pre('save', async function(next) {
     const count = await this.constructor.countDocuments();
     this.paymentId = `PAY${String(count + 1).padStart(6, '0')}`;
   }
-  this.patientLiability = this.billAmount - this.insuranceCovered;
   next();
 });
 

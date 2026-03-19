@@ -17,23 +17,37 @@ const ClaimReviewModal = ({ claim, open, onClose }) => {
   const dispatch = useDispatch();
   const [approvedAmount, setApprovedAmount] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showRejectConfirm, setShowRejectConfirm] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
 
   if (!claim) return null;
 
   const isHighRisk = claim.fraudScore > 0.75;
 
-  const handleReview = async (status) => {
+  const handleReview = async (status, rejectionReason = '') => {
     setLoading(true);
     await dispatch(reviewClaim({
       claimId: claim.claimId,
-      data: { status, approvedAmount: status === 'approved' ? Number(approvedAmount) || claim.claimAmount : 0 }
+      data: {
+        status,
+        rejectionReason,
+        approvedAmount: status === 'approved' ? Number(approvedAmount) || claim.claimAmount : 0
+      }
     }));
     setLoading(false);
+    setShowRejectConfirm(false);
+    setRejectReason('');
+    onClose();
+  };
+
+  const handleClose = () => {
+    setShowRejectConfirm(false);
+    setRejectReason('');
     onClose();
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+    <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
       <DialogTitle>Review Claim — {claim.claimId}</DialogTitle>
       <DialogContent>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
@@ -82,7 +96,7 @@ const ClaimReviewModal = ({ claim, open, onClose }) => {
           ))}
         </Box>
 
-        {!isHighRisk && (
+        {!isHighRisk && !showRejectConfirm && (
           <TextField
             label="Approved Amount (₹)"
             type="number"
@@ -94,25 +108,62 @@ const ClaimReviewModal = ({ claim, open, onClose }) => {
             helperText="Leave blank to approve full claim amount"
           />
         )}
+
+        {showRejectConfirm && (
+          <Box sx={{ mt: 2, p: 2, bgcolor: '#fff3e0', borderRadius: 1, border: '1px solid #ff9800' }}>
+            <Typography variant="body2" fontWeight={600} color="error" gutterBottom>
+              Confirm Rejection
+            </Typography>
+            <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
+              Rejecting this claim will revert the bill to full amount unpaid.
+            </Typography>
+            <TextField
+              fullWidth
+              multiline
+              rows={2}
+              size="small"
+              label="Rejection reason (optional)"
+              placeholder="e.g. Fraudulent claim, duplicate submission..."
+              value={rejectReason}
+              onChange={e => setRejectReason(e.target.value)}
+            />
+          </Box>
+        )}
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose} disabled={loading}>Cancel</Button>
-        <Button
-          onClick={() => handleReview('rejected')}
-          color="error"
-          variant="outlined"
-          disabled={loading}
-        >
-          Reject
-        </Button>
-        <Button
-          onClick={() => handleReview('approved')}
-          color="success"
-          variant="contained"
-          disabled={loading || isHighRisk}
-        >
-          Approve
-        </Button>
+        <Button onClick={handleClose} disabled={loading}>Cancel</Button>
+        {!showRejectConfirm ? (
+          <>
+            <Button
+              onClick={() => setShowRejectConfirm(true)}
+              color="error"
+              variant="outlined"
+              disabled={loading}
+            >
+              Reject
+            </Button>
+            <Button
+              onClick={() => handleReview('approved')}
+              color="success"
+              variant="contained"
+              disabled={loading || isHighRisk}
+            >
+              Approve
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button onClick={() => setShowRejectConfirm(false)} disabled={loading}>Back</Button>
+            <Button
+              onClick={() => handleReview('rejected', rejectReason)}
+              color="error"
+              variant="contained"
+              disabled={loading}
+            >
+              Confirm Rejection
+            </Button>
+          </>
+        )}
       </DialogActions>
     </Dialog>
   );

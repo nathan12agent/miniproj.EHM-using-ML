@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+const API_BASE_URL = process.env.REACT_APP_API_URL || '/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -85,6 +85,24 @@ export const billingAPI = {
   create: (data) => api.post('/billing', data),
   update: (id, data) => api.put(`/billing/${id}`, data),
   delete: (id) => api.delete(`/billing/${id}`),
+  pay: (id, data) => api.post(`/billing/${id}/pay`, data),
+};
+
+// Insurance API
+export const insuranceAPI = {
+  getPolicies: () => api.get('/insurance/policies'),
+  getPolicyByPatient: (patientId) => api.get(`/insurance/policy/${patientId}`),
+  createPolicy: (data) => api.post('/insurance/policy', data),
+  getClaims: (params) => api.get('/insurance/claims', { params }),
+  submitClaim: (data) => api.post('/insurance/claim/submit', data),
+  reviewClaim: (claimId, data) => api.patch(`/insurance/claims/${claimId}/review`, data),
+};
+
+// Payment API
+export const paymentAPI = {
+  mockPay: (data) => api.post('/payment/mock-pay', data),
+  getReceipt: (billId) => api.get(`/payment/receipt/${billId}`),
+  getHistory: () => api.get('/payment/history'),
 };
 
 // ML API
