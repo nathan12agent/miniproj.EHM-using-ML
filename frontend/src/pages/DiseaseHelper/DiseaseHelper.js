@@ -27,16 +27,12 @@ import {
   DialogContent,
   DialogActions,
   Alert,
-  Tabs,
-  Tab,
-  Divider,
   IconButton,
 } from '@mui/material';
 import {
   Psychology as MLIcon,
   Person as PatientIcon,
   Assessment as DiagnosisIcon,
-  History as HistoryIcon,
   Print as PrintIcon,
   Download as DownloadIcon,
   ExpandMore as ExpandMoreIcon,
@@ -45,15 +41,23 @@ import {
   CheckCircle as CheckIcon,
   PhotoCamera as CameraIcon,
   CloudUpload as UploadIcon,
-  Visibility as PreviewIcon,
   Delete as DeleteIcon,
+  MonitorHeart as VitalsIcon,
 } from '@mui/icons-material';
 import { useSelector } from 'react-redux';
 import { mlApi } from '../../services/mlApi';
 
 function DiseaseHelper() {
   const { user } = useSelector((state) => state.auth);
-  const [activeTab, setActiveTab] = useState(0);
+  // Vital signs state
+  const [vitalSigns, setVitalSigns] = useState({
+    temperature: '',
+    bloodPressureSystolic: '',
+    bloodPressureDiastolic: '',
+    heartRate: '',
+    respiratoryRate: '',
+    oxygenSaturation: '',
+  });
   
   // Symptom-based detection state
   const [patientInfo, setPatientInfo] = useState({
@@ -209,29 +213,68 @@ function DiseaseHelper() {
     }
 
     setLoading(true);
-    
+
     try {
-      // Create symptoms object for ML API
+      const token = localStorage.getItem('token');
+      const symptomList = selectedSymptoms.map(s => s.value);
+
+      // Try backend route first (saves to DB, includes vital signs)
+      try {
+        const response = await fetch(
+          `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/doctor/detect-disease`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({
+              patientId: patientInfo.patientId || undefined,
+              symptoms: symptomList,
+              vitalSigns: {
+                ...vitalSigns,
+                age: parseInt(patientInfo.age) || 35,
+                gender: patientInfo.gender || 'Male',
+              },
+            }),
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          const det = data.detection;
+          const mappedPrediction = {
+            predicted_condition: det.predictedDisease,
+            confidence: det.confidence,
+            all_probabilities: det.allProbabilities,
+            top_predictions: det.allProbabilities
+              ? Object.entries(det.allProbabilities)
+                  .map(([disease, probability]) => ({ disease, probability }))
+                  .sort((a, b) => b.probability - a.probability)
+              : [],
+          };
+          setPrediction(mappedPrediction);
+          const mockSimilarPatients = generateSimilarPatients(selectedSymptoms, mappedPrediction);
+          setSimilarPatients(mockSimilarPatients);
+          const generatedRemedies = generateRemedies(mappedPrediction);
+          setRemedies(generatedRemedies);
+          setPatientSaved(true);
+          setDetectionComplete(true);
+          return;
+        }
+      } catch (backendErr) {
+        console.warn('Backend detect-disease failed, falling back to mlApi:', backendErr);
+      }
+
+      // Fallback: direct ML API call
       const symptoms = {};
       availableSymptoms.forEach(symptom => {
-        symptoms[symptom.value] = selectedSymptoms.some(selected => selected.value === symptom.value) ? 1 : 0;
+        symptoms[symptom.value] = selectedSymptoms.some(s => s.value === symptom.value) ? 1 : 0;
       });
-
-      // Get ML prediction
       const result = await mlApi.predictWithFallback(symptoms, patientInfo);
       setPrediction(result.prediction);
-
-      // Generate similar patients (mock data for demo)
       const mockSimilarPatients = generateSimilarPatients(selectedSymptoms, result.prediction);
       setSimilarPatients(mockSimilarPatients);
-
-      // Generate remedies based on prediction and severity
       const generatedRemedies = generateRemedies(result.prediction);
       setRemedies(generatedRemedies);
-
-      // Save patient to records automatically after detection
       await savePatientRecord(result.prediction, mockSimilarPatients, generatedRemedies);
-
       setDetectionComplete(true);
     } catch (error) {
       console.error('Error detecting disease:', error);
@@ -491,6 +534,7 @@ ${remedies.immediate?.join('\n')}
     setDetectionComplete(false);
     setReportGenerated(false);
     setPatientSaved(false);
+    setVitalSigns({ temperature: '', bloodPressureSystolic: '', bloodPressureDiastolic: '', heartRate: '', respiratoryRate: '', oxygenSaturation: '' });
   };
 
   const resetSkinDetection = () => {
@@ -503,10 +547,6 @@ ${remedies.immediate?.join('\n')}
   const resetAll = () => {
     resetDetection();
     resetSkinDetection();
-  };
-
-  const handleTabChange = (event, newValue) => {
-    setActiveTab(newValue);
   };
 
   return (
@@ -629,6 +669,79 @@ ${remedies.immediate?.join('\n')}
                 <Typography variant="body2" color="text.secondary" sx={{ mt: 2, mb: 2 }}>
                   Select symptoms to analyze with 132 medical conditions
                 </Typography>
+
+                <Typography variant="subtitle2" sx={{ mt: 2, mb: 1, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  <VitalsIcon fontSize="small" sx={{ color: '#0891b2' }} />
+                  Vital Signs (Optional)
+                </Typography>
+                <Grid container spacing={1}>
+                  <Grid item xs={6}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      label="Temp (°F)"
+                      type="number"
+                      value={vitalSigns.temperature}
+                      onChange={(e) => setVitalSigns({ ...vitalSigns, temperature: e.target.value })}
+                      placeholder="98.6"
+                    />
+                  </Grid>
+                  <Grid item xs={6}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      label="Heart Rate (bpm)"
+                      type="number"
+                      value={vitalSigns.heartRate}
+                      onChange={(e) => setVitalSigns({ ...vitalSigns, heartRate: e.target.value })}
+                      placeholder="70"
+                    />
+                  </Grid>
+                  <Grid item xs={6}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      label="BP Systolic"
+                      type="number"
+                      value={vitalSigns.bloodPressureSystolic}
+                      onChange={(e) => setVitalSigns({ ...vitalSigns, bloodPressureSystolic: e.target.value })}
+                      placeholder="120"
+                    />
+                  </Grid>
+                  <Grid item xs={6}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      label="BP Diastolic"
+                      type="number"
+                      value={vitalSigns.bloodPressureDiastolic}
+                      onChange={(e) => setVitalSigns({ ...vitalSigns, bloodPressureDiastolic: e.target.value })}
+                      placeholder="80"
+                    />
+                  </Grid>
+                  <Grid item xs={6}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      label="O₂ Sat (%)"
+                      type="number"
+                      value={vitalSigns.oxygenSaturation}
+                      onChange={(e) => setVitalSigns({ ...vitalSigns, oxygenSaturation: e.target.value })}
+                      placeholder="98"
+                    />
+                  </Grid>
+                  <Grid item xs={6}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      label="Resp. Rate"
+                      type="number"
+                      value={vitalSigns.respiratoryRate}
+                      onChange={(e) => setVitalSigns({ ...vitalSigns, respiratoryRate: e.target.value })}
+                      placeholder="16"
+                    />
+                  </Grid>
+                </Grid>
 
                 <Box sx={{ textAlign: 'center' }}>
                   <Button
