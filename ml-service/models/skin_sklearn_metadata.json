@@ -1,6 +1,6 @@
 {
-  "version": "20260209_210758",
-  "training_date": "2026-02-09T21:07:58.869325",
+  "version": "20260320_224037",
+  "training_date": "2026-03-20T22:40:37.645182",
   "framework": "Scikit-learn",
   "approach": "Feature-based classification",
   "num_classes": 22,

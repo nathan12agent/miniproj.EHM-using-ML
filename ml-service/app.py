@@ -3,7 +3,7 @@ from flask_cors import CORS
 import pandas as pd
 import numpy as np
 from disease_predictor_enhanced import DiseasePredictor
-from skin_disease_predictor import get_skin_predictor
+from skin_disease_predictor_enhanced import get_enhanced_skin_predictor
 from staff_ml_routes import register_staff_routes
 from auto_admission_service import get_auto_admission_service
 from specialist_recommender import get_specialist_recommender
@@ -20,12 +20,12 @@ except Exception as e:
     print(f"Error initializing predictor: {e}")
     predictor = None
 
-# Initialize skin disease predictor
+# Initialize enhanced skin disease predictor
 try:
-    skin_predictor = get_skin_predictor()
-    print("Skin disease predictor initialized successfully")
+    skin_predictor = get_enhanced_skin_predictor()
+    print("Enhanced skin disease predictor initialized successfully")
 except Exception as e:
-    print(f"Error initializing skin predictor: {e}")
+    print(f"Error initializing enhanced skin predictor: {e}")
     skin_predictor = None
 
 # Register staff management ML routes

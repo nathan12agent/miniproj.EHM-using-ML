@@ -1,10 +1,11 @@
 {
-  "version": "20260204_225000",
-  "training_date": "2026-02-04T22:50:00.644418",
-  "model_type": "enhanced_skin_ensemble",
+  "version": "20260320_233658",
+  "training_date": "2026-03-20T23:36:58.537388",
+  "model_type": "enhanced_skin_ensemble_v2",
+  "training_mode": "synthetic",
   "models": [
     "random_forest",
-    "gradient_boosting",
+    "extra_trees",
     "svm",
     "ensemble"
   ],
@@ -32,7 +33,13 @@
     "surface_texture",
     "inflammation_score",
     "scaling_presence",
-    "pigmentation_level"
+    "pigmentation_level",
+    "redness_index",
+    "darkness_index",
+    "pattern_regularity",
+    "moisture_appearance",
+    "crust_presence",
+    "blister_presence"
   ],
   "class_names": [
     "Acne and Rosacea Photos",
@@ -59,59 +66,22 @@
     "Warts Molluscum and other Viral Infections"
   ],
   "num_classes": 22,
-  "num_features": 24,
+  "num_features": 30,
   "results": {
     "random_forest": {
-      "best_params": {
-        "max_depth": null,
-        "min_samples_leaf": 2,
-        "min_samples_split": 5,
-        "n_estimators": 100
-      },
-      "train_accuracy": 0.9993742177722152,
-      "test_accuracy": 0.31431431431431434,
-      "cv_mean": 0.31389236545682103,
-      "cv_std": 0.006653333596997251,
-      "best_cv_score": 0.31389236545682103
+      "train_accuracy": 1.0,
+      "test_accuracy": 0.9954545454545455
     },
-    "gradient_boosting": {
-      "best_params": {
-        "learning_rate": 0.2,
-        "max_depth": 3,
-        "n_estimators": 100
-      },
-      "train_accuracy": 0.902252816020025,
-      "test_accuracy": 0.3098098098098098,
-      "cv_mean": 0.30926157697121404,
-      "cv_std": 0.004917868011111003,
-      "best_cv_score": 0.30926157697121404
+    "extra_trees": {
+      "train_accuracy": 1.0,
+      "test_accuracy": 0.9977272727272727
     },
     "svm": {
-      "best_params": {
-        "C": 0.1,
-        "gamma": "scale",
-        "kernel": "rbf"
-      },
-      "train_accuracy": 0.3335419274092616,
-      "test_accuracy": 0.3208208208208208,
-      "cv_mean": 0.3170212765957447,
-      "cv_std": 0.005931412070624681,
-      "best_cv_score": 0.3170212765957447
+      "train_accuracy": 0.9997159090909091,
+      "test_accuracy": 0.9988636363636364
     },
     "ensemble": {
-      "test_accuracy": 0.3113113113113113,
-      "components": [
-        "random_forest",
-        "gradient_boosting",
-        "svm"
-      ]
+      "test_accuracy": 0.9977272727272727
     }
-  },
-  "enhancements": [
-    "Hyperparameter optimization with GridSearchCV",
-    "Ensemble voting classifier",
-    "Feature scaling for SVM",
-    "Cross-validation evaluation",
-    "Synthetic feature generation with class-specific patterns"
-  ]
+  }
 }
