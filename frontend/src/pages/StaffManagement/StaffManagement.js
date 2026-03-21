@@ -518,6 +518,18 @@ function DoctorsSummaryTab() {
                       />
                       {d.mlAccess && <Chip label="ML" color="info" size="small" />}
                     </Box>
+                    {d.isOccupied && d.currentAssignment && (
+                      <Box sx={{ mt: 1, backgroundColor: 'rgba(239, 68, 68, 0.05)', p: 1, borderRadius: 1 }}>
+                        <Typography variant="caption" color="error.main" sx={{ fontWeight: 700, display: 'block' }}>
+                           👤 Treating: {d.currentAssignment.patientName}
+                        </Typography>
+                        {d.currentAssignment.bed && (
+                          <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                             🛏️ {d.currentAssignment.bed.ward} - {d.currentAssignment.bed.bedNumber}
+                          </Typography>
+                        )}
+                      </Box>
+                    )}
                   </Box>
                 </CardContent>
               </Card>

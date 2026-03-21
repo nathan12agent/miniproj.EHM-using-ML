@@ -32,15 +32,40 @@ router.get('/', auth, async (req, res) => {
       .skip(skip)
       .limit(parseInt(limit));
 
+    const Patient = require('../models/Patient');
     const Bed = require('../models/Bed');
-    const occupiedBeds = await Bed.find({ status: 'Occupied' }).populate('patient');
-    const occupiedDoctorIds = occupiedBeds
-      .filter(b => b.patient && b.patient.assignedDoctor)
-      .map(b => Object.keys(b.patient.assignedDoctor).includes('_id') ? b.patient.assignedDoctor._id.toString() : b.patient.assignedDoctor.toString());
+    
+    // Find all patients currently assigned to these doctors
+    const doctorIds = doctors.map(d => d._id);
+    const assignedPatients = await Patient.find({ assignedDoctor: { $in: doctorIds } });
+    
+    const patientIds = assignedPatients.map(p => p._id);
+    const occupiedBeds = await Bed.find({ patient: { $in: patientIds }, status: 'Occupied' });
+
+    const patientBedMap = {};
+    occupiedBeds.forEach(b => {
+      patientBedMap[b.patient.toString()] = { ward: b.ward, bedNumber: b.bedNumber };
+    });
+
+    const doctorAssignmentMap = {};
+    assignedPatients.forEach(p => {
+       const docId = p.assignedDoctor.toString();
+       if (!doctorAssignmentMap[docId]) {
+          doctorAssignmentMap[docId] = {
+             patientName: `${p.firstName} ${p.lastName}`,
+             bed: patientBedMap[p._id.toString()] || null
+          };
+       }
+    });
 
     const doctorsWithStatus = doctors.map(doc => {
-      const isOccupied = occupiedDoctorIds.includes(doc._id.toString());
-      return { ...doc.toObject(), availabilityStatus: isOccupied ? 'Occupied' : 'Available', isOccupied };
+      const assignment = doctorAssignmentMap[doc._id.toString()];
+      return { 
+        ...doc.toObject(), 
+        availabilityStatus: assignment ? 'Occupied' : 'Available',
+        isOccupied: !!assignment,
+        currentAssignment: assignment || null
+      };
     });
 
     const total = await Doctor.countDocuments(query);
