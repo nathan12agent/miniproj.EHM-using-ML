@@ -98,10 +98,28 @@ router.get('/', auth, async (req, res) => {
       .skip(skip)
       .limit(limit);
 
+    // Compute active bed assignments
+    const Bed = require('../models/Bed');
+    const allBeds = await Bed.find({ status: 'Occupied' });
+    const bedMap = {};
+    allBeds.forEach(bed => {
+      if (bed.patient) {
+         bedMap[bed.patient.toString()] = { bedNumber: bed.bedNumber, ward: bed.ward };
+      }
+    });
+
+    const patientsWithBeds = patients.map(p => {
+      const obj = p.toObject();
+      if (bedMap[p._id.toString()]) {
+         obj.assignedBed = bedMap[p._id.toString()];
+      }
+      return obj;
+    });
+
     const total = await Patient.countDocuments(query);
 
     res.json({
-      patients,
+      patients: patientsWithBeds,
       pagination: {
         current: page,
         pages: Math.ceil(total / limit),

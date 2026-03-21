@@ -410,7 +410,29 @@ function Doctors() {
                           </TableCell>
                           <TableCell>{doctor.experience} yrs</TableCell>
                           <TableCell>
-                            <Chip label={doctor.status} color={getStatusColor(doctor.status)} size="small" />
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'flex-start' }}>
+                              <Chip label={doctor.status} color={getStatusColor(doctor.status)} size="small" />
+                              {doctor.isOccupied && doctor.currentAssignment && (
+                                <>
+                                  <Chip
+                                    label={`👤 ${doctor.currentAssignment.patientName}`}
+                                    size="small"
+                                    color="error"
+                                    variant="outlined"
+                                    sx={{ fontWeight: 600, fontSize: '0.7rem' }}
+                                  />
+                                  {doctor.currentAssignment.bed && (
+                                    <Chip
+                                      label={`🛏️ ${doctor.currentAssignment.bed.ward} - ${doctor.currentAssignment.bed.bedNumber}`}
+                                      size="small"
+                                      color="error"
+                                      variant="outlined"
+                                      sx={{ fontWeight: 600, fontSize: '0.7rem' }}
+                                    />
+                                  )}
+                                </>
+                              )}
+                            </Box>
                           </TableCell>
                           <TableCell>
                             <Chip

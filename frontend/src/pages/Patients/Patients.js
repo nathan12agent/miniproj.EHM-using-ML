@@ -290,15 +290,27 @@ function Patients() {
                       </Box>
                     </TableCell>
                     <TableCell>
-                      <Chip
-                        label={patient.status}
-                        color={getStatusColor(patient.status)}
-                        size="small"
-                        sx={{ 
-                          fontWeight: 500,
-                          minWidth: 80,
-                        }}
-                      />
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'flex-start' }}>
+                        <Chip
+                          label={patient.status}
+                          color={getStatusColor(patient.status)}
+                          size="small"
+                          sx={{ 
+                            fontWeight: 500,
+                            minWidth: 80,
+                          }}
+                        />
+                        {patient.assignedBed && (
+                          <Chip
+                            icon={<span style={{ marginLeft: 6, fontSize: '0.8rem' }}>🛏️</span>}
+                            label={`${patient.assignedBed.ward} - ${patient.assignedBed.bedNumber}`}
+                            size="small"
+                            color="primary"
+                            variant="outlined"
+                            sx={{ fontWeight: 700, fontSize: '0.7rem' }}
+                          />
+                        )}
+                      </Box>
                     </TableCell>
                     <TableCell>
                       <Typography variant="body2" color="text.secondary">
