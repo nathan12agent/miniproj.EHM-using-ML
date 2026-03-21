@@ -382,4 +382,53 @@ router.post('/:id/assign-doctor', auth, async (req, res) => {
   }
 });
 
+// Auto assign doctor and bed based on injury severity
+router.post('/:id/auto-assign', auth, async (req, res) => {
+  try {
+    const patient = await Patient.findById(req.params.id);
+    if (!patient) return res.status(404).json({ message: 'Patient not found' });
+    
+    // 1. Assign random available active Doctor
+    const Doctor = require('../models/Doctor');
+    const doctors = await Doctor.find({ status: 'Active' });
+    if (doctors.length === 0) return res.status(400).json({ message: 'No active doctors available' });
+    const randomDoctor = doctors[Math.floor(Math.random() * doctors.length)];
+    patient.assignedDoctor = randomDoctor._id;
+    await patient.save();
+
+    // 2. Assign bed if severity is not Minor
+    if (patient.injurySeverity === 'Minor') {
+      return res.json({ 
+        message: `Minor injury. Dr. ${randomDoctor.lastName} assigned. No bed required (Outpatient).` 
+      });
+    }
+
+    // Assign bed logic for Moderate, Severe, Critical
+    let targetWard = 'General';
+    if (patient.injurySeverity === 'Severe' || patient.injurySeverity === 'Critical') targetWard = 'ICU';
+
+    const Bed = require('../models/Bed');
+    // Find an available bed in the target ward
+    let bed = await Bed.findOne({ ward: targetWard, status: 'Available' });
+    
+    // Fallback to any available bed if target ward is full
+    if (!bed) bed = await Bed.findOne({ status: 'Available' });
+
+    if (!bed) {
+      return res.json({
+        message: `Assigned Dr. ${randomDoctor.lastName}, but no beds are currently available!`
+      });
+    }
+
+    await bed.assignToPatient(patient._id, req.user.id);
+    return res.json({
+      message: `${patient.injurySeverity} injury. Assigned Dr. ${randomDoctor.lastName} and Bed ${bed.bedNumber} (${bed.ward}).`
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 module.exports = router;

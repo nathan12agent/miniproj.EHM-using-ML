@@ -187,6 +187,20 @@ const BedManagementWidget = () => {
     }
   };
 
+  const handleAutoAssign = async (patientId) => {
+    try {
+      setLoading(true);
+      const response = await patientsAPI.autoAssign(patientId);
+      toast.success(response.data.message || 'Auto assign successful');
+      await fetchAllData();
+    } catch (error) {
+      console.error('Error in auto assign:', error);
+      toast.error(error.response?.data?.message || 'Failed to auto assign');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleAddBed = async () => {
     // Validate bed number
     if (!newBed.bedNumber.trim()) {
@@ -414,7 +428,7 @@ const BedManagementWidget = () => {
     };
   };
 
-  // Get patients without beds
+  // Get patients without beds (including Minor, so we can Auto Assign them)
   const getPatientsWithoutBeds = () => {
     const assignedPatientIds = beds
       .filter(b => b.patient)
@@ -849,7 +863,7 @@ const BedManagementWidget = () => {
                             </Typography>
                           </Box>
                         </Box>
-                        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 1.5 }}>
                           <Chip 
                             label={patient.gender} 
                             size="small" 
@@ -862,6 +876,19 @@ const BedManagementWidget = () => {
                             sx={{ fontSize: '0.7rem', fontWeight: 600 }}
                           />
                         </Box>
+                        <Button
+                          variant="contained"
+                          color="primary"
+                          size="small"
+                          fullWidth
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAutoAssign(patient._id);
+                          }}
+                          disabled={loading}
+                        >
+                          Auto Assign
+                        </Button>
                       </CardContent>
                     </Card>
                   </Grid>

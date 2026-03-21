@@ -52,6 +52,7 @@ export const patientsAPI = {
   delete: (id) => api.delete(`/patients/${id}`),
   getHighRisk: (threshold) => api.get('/patients/high-risk', { params: { threshold } }),
   assignDoctor: (id, doctorId) => api.post(`/patients/${id}/assign-doctor`, { doctorId }),
+  autoAssign: (id) => api.post(`/patients/${id}/auto-assign`),
 };
 
 // Doctors API
