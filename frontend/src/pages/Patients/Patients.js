@@ -196,6 +196,7 @@ function Patients() {
                 <TableCell sx={{ fontWeight: 600, fontSize: '0.875rem' }}>Patient</TableCell>
                 <TableCell sx={{ fontWeight: 600, fontSize: '0.875rem' }}>Age</TableCell>
                 <TableCell sx={{ fontWeight: 600, fontSize: '0.875rem' }}>Gender</TableCell>
+                <TableCell sx={{ fontWeight: 600, fontSize: '0.875rem' }}>Condition</TableCell>
                 <TableCell sx={{ fontWeight: 600, fontSize: '0.875rem' }}>Contact</TableCell>
                 <TableCell sx={{ fontWeight: 600, fontSize: '0.875rem' }}>Status</TableCell>
                 <TableCell sx={{ fontWeight: 600, fontSize: '0.875rem' }}>Last Visit</TableCell>
@@ -268,6 +269,15 @@ function Patients() {
                     </TableCell>
                     <TableCell>
                       <Typography variant="body2">{patient.gender}</Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Chip 
+                        label={patient.condition || 'Other'} 
+                        size="small" 
+                        color="info" 
+                        variant="outlined" 
+                        sx={{ fontWeight: 600 }}
+                      />
                     </TableCell>
                     <TableCell>
                       <Box>

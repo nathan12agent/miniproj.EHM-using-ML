@@ -32,10 +32,21 @@ router.get('/', auth, async (req, res) => {
       .skip(skip)
       .limit(parseInt(limit));
 
+    const Bed = require('../models/Bed');
+    const occupiedBeds = await Bed.find({ status: 'Occupied' }).populate('patient');
+    const occupiedDoctorIds = occupiedBeds
+      .filter(b => b.patient && b.patient.assignedDoctor)
+      .map(b => Object.keys(b.patient.assignedDoctor).includes('_id') ? b.patient.assignedDoctor._id.toString() : b.patient.assignedDoctor.toString());
+
+    const doctorsWithStatus = doctors.map(doc => {
+      const isOccupied = occupiedDoctorIds.includes(doc._id.toString());
+      return { ...doc.toObject(), availabilityStatus: isOccupied ? 'Occupied' : 'Available', isOccupied };
+    });
+
     const total = await Doctor.countDocuments(query);
 
     res.json({
-      doctors,
+      doctors: doctorsWithStatus,
       pagination: {
         current: parseInt(page),
         pages: Math.ceil(total / limit),
@@ -77,21 +88,19 @@ router.get('/:id', auth, async (req, res) => {
  *     summary: Create new doctor
  *     tags: [Doctors]
  */
-router.post('/', auth, [
-  body('firstName').trim().isLength({ min: 2 }),
-  body('lastName').trim().isLength({ min: 2 }),
-  body('specialization').notEmpty(),
-  body('phone').isMobilePhone(),
-  body('email').isEmail()
-], async (req, res) => {
+router.post('/', auth, async (req, res) => {
   try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
+
+    // Remove empty strings so Mongoose doesn't fail on optional Enums or Date formats
+    const cleanBody = { ...req.body };
+    Object.keys(cleanBody).forEach(key => {
+      if (cleanBody[key] === '') {
+        delete cleanBody[key];
+      }
+    });
 
     const doctor = new Doctor({
-      ...req.body,
+      ...cleanBody,
       createdBy: req.user.id
     });
 
@@ -102,11 +111,11 @@ router.post('/', auth, [
       doctor
     });
   } catch (error) {
-    console.error(error);
+    console.error("DOCTOR CREATE ERROR:", error);
     if (error.code === 11000) {
-      return res.status(400).json({ message: 'Doctor with this email already exists' });
+      return res.status(400).json({ message: 'Duplicate field error: ' + JSON.stringify(error.keyValue) });
     }
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: error.message || 'Server error' });
   }
 });
 

@@ -21,7 +21,7 @@ router.get('/', auth, async (req, res) => {
     const beds = await Bed.find(query)
       .populate({
         path: 'patient',
-        select: 'firstName lastName patientId dateOfBirth gender phone assignedDoctor',
+        select: 'firstName lastName patientId dateOfBirth gender phone condition assignedDoctor',
         populate: { path: 'assignedDoctor', select: 'firstName lastName specialization' }
       })
       .sort({ bedNumber: 1 });
@@ -69,7 +69,7 @@ router.get('/:id', auth, async (req, res) => {
     const bed = await Bed.findById(req.params.id)
       .populate({
         path: 'patient',
-        select: 'firstName lastName patientId dateOfBirth gender phone assignedDoctor',
+        select: 'firstName lastName patientId dateOfBirth gender phone condition assignedDoctor',
         populate: { path: 'assignedDoctor', select: 'firstName lastName specialization' }
       });
     
@@ -153,7 +153,7 @@ router.post('/:id/assign', auth, [
     const updatedBed = await Bed.findById(bed._id)
       .populate({
         path: 'patient',
-        select: 'firstName lastName patientId dateOfBirth gender phone assignedDoctor',
+        select: 'firstName lastName patientId dateOfBirth gender phone condition assignedDoctor',
         populate: { path: 'assignedDoctor', select: 'firstName lastName specialization' }
       });
 

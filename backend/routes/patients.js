@@ -169,12 +169,21 @@ router.post('/', auth, validatePatient, async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      return res.status(400).json({ message: errors.array()[0].msg, errors: errors.array() });
     }
 
+    const { CONDITION_SPECIALTY_MAP } = require('../utils/medicalTriage');
+    const triage = CONDITION_SPECIALTY_MAP[req.body.condition || 'Other'];
+
+    const cleanBody = { ...req.body };
+    Object.keys(cleanBody).forEach(key => {
+      if (cleanBody[key] === '') delete cleanBody[key];
+    });
+
     const patient = new Patient({
-      ...req.body,
-      createdBy: req.user.id
+      ...cleanBody,
+      createdBy: req.user.id,
+      injurySeverity: triage?.severity || 'Minor'
     });
 
     await patient.save();
@@ -206,11 +215,11 @@ router.post('/', auth, validatePatient, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error(error);
+    console.error("PATIENT CREATE ERROR:", error);
     if (error.code === 11000) {
-      return res.status(400).json({ message: 'Patient with this email already exists' });
+      return res.status(400).json({ message: 'Duplicate field error: ' + JSON.stringify(error.keyValue) });
     }
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: error.message || 'Server error' });
   }
 });
 
@@ -242,12 +251,20 @@ router.put('/:id', auth, validatePatient, async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      return res.status(400).json({ message: errors.array()[0].msg, errors: errors.array() });
     }
+
+    const { CONDITION_SPECIALTY_MAP } = require('../utils/medicalTriage');
+    const triage = CONDITION_SPECIALTY_MAP[req.body.condition || 'Other'];
+
+    const cleanBody = { ...req.body };
+    Object.keys(cleanBody).forEach(key => {
+      if (cleanBody[key] === '') delete cleanBody[key];
+    });
 
     const patient = await Patient.findByIdAndUpdate(
       req.params.id,
-      { ...req.body, updatedBy: req.user.id },
+      { ...cleanBody, updatedBy: req.user.id, injurySeverity: triage?.severity || 'Minor' },
       { new: true, runValidators: true }
     );
 
@@ -388,24 +405,51 @@ router.post('/:id/auto-assign', auth, async (req, res) => {
     const patient = await Patient.findById(req.params.id);
     if (!patient) return res.status(404).json({ message: 'Patient not found' });
     
-    // 1. Assign random available active Doctor
+    const { CONDITION_SPECIALTY_MAP } = require('../utils/medicalTriage');
+    const triage = CONDITION_SPECIALTY_MAP[patient.condition || 'Other'] || { specialty: 'General Medicine', severity: 'Minor' };
+    
+    // Auto-update injurySeverity to ensure perfectly aligned assignments
+    if (patient.injurySeverity !== triage.severity) {
+      patient.injurySeverity = triage.severity;
+    }
+
+    // 1. Assign available active Doctor with matching specialty
     const Doctor = require('../models/Doctor');
-    const doctors = await Doctor.find({ status: 'Active' });
+    let doctors = await Doctor.find({ status: 'Active', specialization: triage.specialty });
+
+    // 2. Try semantic fallbacks sequentially if the primary specialist is missing
+    if (doctors.length === 0 && triage.fallbacks && triage.fallbacks.length > 0) {
+      for (const fallback of triage.fallbacks) {
+        doctors = await Doctor.find({ status: 'Active', specialization: fallback });
+        if (doctors.length > 0) break;
+      }
+    }
+    
+    // 3. Fallback to General Medicine if a specialist/fallback is still unavailable
+    if (doctors.length === 0 && triage.specialty !== 'General Medicine') {
+       doctors = await Doctor.find({ status: 'Active', specialization: 'General Medicine' });
+    }
+
+    // 4. Fallback to any active doctor if General Medicine is ALSO unavailable
+    if (doctors.length === 0) {
+       doctors = await Doctor.find({ status: 'Active' });
+    }
+    
     if (doctors.length === 0) return res.status(400).json({ message: 'No active doctors available' });
     const randomDoctor = doctors[Math.floor(Math.random() * doctors.length)];
     patient.assignedDoctor = randomDoctor._id;
     await patient.save();
 
     // 2. Assign bed if severity is not Minor
-    if (patient.injurySeverity === 'Minor') {
+    if (triage.severity === 'Minor') {
       return res.json({ 
-        message: `Minor injury. Dr. ${randomDoctor.lastName} assigned. No bed required (Outpatient).` 
+        message: `Condition: ${patient.condition}. Dr. ${randomDoctor.lastName} (${randomDoctor.specialization}) assigned. Outpatient care - no bed required.` 
       });
     }
 
     // Assign bed logic for Moderate, Severe, Critical
     let targetWard = 'General';
-    if (patient.injurySeverity === 'Severe' || patient.injurySeverity === 'Critical') targetWard = 'ICU';
+    if (triage.severity === 'Severe' || triage.severity === 'Critical') targetWard = 'ICU';
 
     const Bed = require('../models/Bed');
     // Find an available bed in the target ward
