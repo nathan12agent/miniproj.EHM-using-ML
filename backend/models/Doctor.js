@@ -12,33 +12,32 @@ const doctorSchema = new mongoose.Schema({
   },
   firstName: {
     type: String,
-    required: true,
+    required: false,
     trim: true
   },
   lastName: {
     type: String,
-    required: true,
+    required: false,
     trim: true
   },
   dateOfBirth: {
     type: Date,
-    required: true
+    required: false
   },
   gender: {
     type: String,
-    required: true,
+    required: false,
     enum: ['Male', 'Female', 'Other']
   },
   
   // Contact Information
   phone: {
     type: String,
-    required: true
+    required: false
   },
   email: {
     type: String,
-    required: true,
-    unique: true,
+    required: false,
     lowercase: true,
     trim: true
   },
@@ -53,12 +52,11 @@ const doctorSchema = new mongoose.Schema({
   // Professional Information
   medicalLicenseNumber: {
     type: String,
-    required: true,
-    unique: true
+    required: false
   },
   specialization: {
     type: String,
-    required: true,
+    required: false,
     enum: [
       'General Medicine',
       'Cardiology',
@@ -95,7 +93,7 @@ const doctorSchema = new mongoose.Schema({
   // Experience
   experience: {
     type: Number, // years of experience
-    required: true,
+    required: false,
     min: 0
   },
   
@@ -103,7 +101,7 @@ const doctorSchema = new mongoose.Schema({
   department: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Department',
-    required: true
+    required: false
   },
   
   schedule: {
@@ -147,7 +145,7 @@ const doctorSchema = new mongoose.Schema({
   // Consultation Fee
   consultationFee: {
     type: Number,
-    required: true,
+    required: false,
     min: 0
   },
   
@@ -175,7 +173,7 @@ const doctorSchema = new mongoose.Schema({
   mlAccess: {
     type: Boolean,
     default: false,
-    required: true
+    required: false
   },
   mlAccessGrantedBy: {
     type: mongoose.Schema.Types.ObjectId,
@@ -195,7 +193,7 @@ const doctorSchema = new mongoose.Schema({
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true
+    required: false
   },
   
   // Profile Image

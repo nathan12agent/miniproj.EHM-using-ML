@@ -503,11 +503,18 @@ function DoctorsSummaryTab() {
                       Dr. {d.firstName} {d.lastName}
                     </Typography>
                     <Typography variant="caption" color="text.secondary" noWrap>{d.specialization}</Typography>
-                    <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5, flexWrap: 'wrap' }}>
+                    <Box sx={{ display: 'flex', gap: 0.5, mt: 1, flexWrap: 'wrap' }}>
                       <Chip
                         label={d.status}
                         color={d.status === 'Active' ? 'success' : d.status === 'On Leave' ? 'warning' : 'error'}
                         size="small"
+                      />
+                      <Chip
+                        label={d.availabilityStatus || 'Available'}
+                        color={d.isOccupied ? 'error' : 'primary'}
+                        size="small"
+                        variant="outlined"
+                        sx={{ fontWeight: 'bold' }}
                       />
                       {d.mlAccess && <Chip label="ML" color="info" size="small" />}
                     </Box>
