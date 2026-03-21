@@ -126,6 +126,13 @@ const patientSchema = new mongoose.Schema({
     }
   },
   
+  // Injury / Triage Information
+  injurySeverity: {
+    type: String,
+    enum: ['Minor', 'Moderate', 'Severe', 'Critical'],
+    default: 'Minor'
+  },
+
   // System Information
   status: {
     type: String,
@@ -160,6 +167,12 @@ patientSchema.index({ 'riskScores.mortalityRisk': -1 });
 // Virtual for full name
 patientSchema.virtual('fullName').get(function() {
   return `${this.firstName} ${this.lastName}`;
+});
+
+// Virtual: does this patient require a bed assignment?
+// Minor injuries (cuts, sprains, mild illness) are outpatient — no bed needed.
+patientSchema.virtual('requiresBed').get(function() {
+  return ['Moderate', 'Severe', 'Critical'].includes(this.injurySeverity);
 });
 
 // Virtual for age calculation
