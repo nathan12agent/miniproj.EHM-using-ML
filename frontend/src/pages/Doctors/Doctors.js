@@ -48,6 +48,66 @@ import {
 } from '@mui/icons-material';
 import { doctorsAPI, authAPI } from '../../services/api';
 
+// ── Defined at module level so React never remounts them on re-render ──────────
+const SPECIALIZATIONS = [
+  'General Medicine', 'Cardiology', 'Neurology', 'Orthopedics', 'Pediatrics',
+  'Gynecology', 'Dermatology', 'Psychiatry', 'Radiology', 'Anesthesiology',
+  'Emergency Medicine', 'Surgery', 'Oncology', 'Endocrinology',
+  'Gastroenterology', 'Pulmonology', 'Nephrology', 'Ophthalmology', 'ENT', 'Urology',
+];
+
+function DoctorFormFields({ doctor, setDoctor }) {
+  return (
+    <Grid container spacing={2} sx={{ mt: 1 }}>
+      <Grid item xs={12} sm={6}>
+        <TextField fullWidth label="First Name" value={doctor.firstName}
+          onChange={(e) => setDoctor({ ...doctor, firstName: e.target.value })} />
+      </Grid>
+      <Grid item xs={12} sm={6}>
+        <TextField fullWidth label="Last Name" value={doctor.lastName}
+          onChange={(e) => setDoctor({ ...doctor, lastName: e.target.value })} />
+      </Grid>
+      <Grid item xs={12} sm={6}>
+        <TextField fullWidth label="Email" type="email" value={doctor.email}
+          onChange={(e) => setDoctor({ ...doctor, email: e.target.value })} />
+      </Grid>
+      <Grid item xs={12} sm={6}>
+        <TextField fullWidth label="Phone" value={doctor.phone}
+          onChange={(e) => setDoctor({ ...doctor, phone: e.target.value })} />
+      </Grid>
+      <Grid item xs={12} sm={6}>
+        <FormControl fullWidth>
+          <InputLabel>Specialization</InputLabel>
+          <Select value={doctor.specialization} label="Specialization"
+            onChange={(e) => setDoctor({ ...doctor, specialization: e.target.value })}>
+            {SPECIALIZATIONS.map(s => <MenuItem key={s} value={s}>{s}</MenuItem>)}
+          </Select>
+        </FormControl>
+      </Grid>
+      <Grid item xs={12} sm={6}>
+        <TextField fullWidth label="Experience (years)" type="number" value={doctor.experience}
+          onChange={(e) => setDoctor({ ...doctor, experience: e.target.value })} />
+      </Grid>
+      <Grid item xs={12} sm={6}>
+        <TextField fullWidth label="License Number" value={doctor.licenseNumber}
+          onChange={(e) => setDoctor({ ...doctor, licenseNumber: e.target.value })} />
+      </Grid>
+      <Grid item xs={12} sm={6}>
+        <FormControl fullWidth>
+          <InputLabel>Status</InputLabel>
+          <Select value={doctor.status} label="Status"
+            onChange={(e) => setDoctor({ ...doctor, status: e.target.value })}>
+            <MenuItem value="Active">Active</MenuItem>
+            <MenuItem value="On Leave">On Leave</MenuItem>
+            <MenuItem value="Inactive">Inactive</MenuItem>
+          </Select>
+        </FormControl>
+      </Grid>
+    </Grid>
+  );
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 function Doctors() {
   const [doctors, setDoctors] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -218,61 +278,7 @@ function Doctors() {
     }
   };
 
-  const SPECIALIZATIONS = [
-    'General Medicine', 'Cardiology', 'Neurology', 'Orthopedics', 'Pediatrics',
-    'Gynecology', 'Dermatology', 'Psychiatry', 'Radiology', 'Anesthesiology',
-    'Emergency Medicine', 'Surgery', 'Oncology', 'Endocrinology',
-    'Gastroenterology', 'Pulmonology', 'Nephrology', 'Ophthalmology', 'ENT', 'Urology',
-  ];
 
-  const DoctorFormFields = ({ doctor, setDoctor }) => (
-    <Grid container spacing={2} sx={{ mt: 1 }}>
-      <Grid item xs={12} sm={6}>
-        <TextField fullWidth label="First Name" value={doctor.firstName}
-          onChange={(e) => setDoctor({ ...doctor, firstName: e.target.value })} />
-      </Grid>
-      <Grid item xs={12} sm={6}>
-        <TextField fullWidth label="Last Name" value={doctor.lastName}
-          onChange={(e) => setDoctor({ ...doctor, lastName: e.target.value })} />
-      </Grid>
-      <Grid item xs={12} sm={6}>
-        <TextField fullWidth label="Email" type="email" value={doctor.email}
-          onChange={(e) => setDoctor({ ...doctor, email: e.target.value })} />
-      </Grid>
-      <Grid item xs={12} sm={6}>
-        <TextField fullWidth label="Phone" value={doctor.phone}
-          onChange={(e) => setDoctor({ ...doctor, phone: e.target.value })} />
-      </Grid>
-      <Grid item xs={12} sm={6}>
-        <FormControl fullWidth>
-          <InputLabel>Specialization</InputLabel>
-          <Select value={doctor.specialization} label="Specialization"
-            onChange={(e) => setDoctor({ ...doctor, specialization: e.target.value })}>
-            {SPECIALIZATIONS.map(s => <MenuItem key={s} value={s}>{s}</MenuItem>)}
-          </Select>
-        </FormControl>
-      </Grid>
-      <Grid item xs={12} sm={6}>
-        <TextField fullWidth label="Experience (years)" type="number" value={doctor.experience}
-          onChange={(e) => setDoctor({ ...doctor, experience: e.target.value })} />
-      </Grid>
-      <Grid item xs={12} sm={6}>
-        <TextField fullWidth label="License Number" value={doctor.licenseNumber}
-          onChange={(e) => setDoctor({ ...doctor, licenseNumber: e.target.value })} />
-      </Grid>
-      <Grid item xs={12} sm={6}>
-        <FormControl fullWidth>
-          <InputLabel>Status</InputLabel>
-          <Select value={doctor.status} label="Status"
-            onChange={(e) => setDoctor({ ...doctor, status: e.target.value })}>
-            <MenuItem value="Active">Active</MenuItem>
-            <MenuItem value="On Leave">On Leave</MenuItem>
-            <MenuItem value="Inactive">Inactive</MenuItem>
-          </Select>
-        </FormControl>
-      </Grid>
-    </Grid>
-  );
 
   return (
     <Box>
