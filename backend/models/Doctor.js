@@ -177,6 +177,10 @@ const doctorSchema = new mongoose.Schema({
     default: false,
     required: true
   },
+  chatAccess: {
+    type: Boolean,
+    default: false
+  },
   mlAccessGrantedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'

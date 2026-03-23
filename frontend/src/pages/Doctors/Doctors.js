@@ -29,6 +29,7 @@ import {
   CircularProgress,
   Alert,
   Tooltip,
+  Snackbar,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -40,8 +41,10 @@ import {
   Assessment as PredictionIcon,
   CheckCircle as ActiveIcon,
   EventBusy as LeaveIcon,
+  Chat as ChatIcon,
 } from '@mui/icons-material';
 import { doctorsAPI } from '../../services/api';
+import api from '../../services/api';
 
 const SPECIALIZATIONS = [
   'Cardiology',
@@ -77,6 +80,21 @@ function Doctors() {
   const [submitting, setSubmitting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+
+  const showSnackbar = (message, severity = 'success') => {
+    setSnackbar({ open: true, message, severity });
+  };
+
+  const handleToggleAccess = async (doctorId, field, newValue) => {
+    try {
+      await api.patch(`/doctors/${doctorId}/access`, { [field]: newValue });
+      setDoctors(prev => prev.map(d => d._id === doctorId ? { ...d, [field]: newValue } : d));
+      showSnackbar(`${field === 'mlAccess' ? 'ML' : 'Chat'} access ${newValue ? 'enabled' : 'disabled'} successfully`, newValue ? 'success' : 'info');
+    } catch (err) {
+      showSnackbar('Failed to update access: ' + (err.response?.data?.message || err.message), 'error');
+    }
+  };
 
   useEffect(() => {
     fetchDoctors();
@@ -170,6 +188,7 @@ function Doctors() {
     total: doctors.length,
     active: doctors.filter((d) => d.status === 'Active').length,
     mlAccess: doctors.filter((d) => d.mlAccess === true).length,
+    chatAccess: doctors.filter((d) => d.chatAccess === true).length,
     onLeave: doctors.filter((d) => d.status === 'On Leave').length,
   };
 
@@ -238,7 +257,7 @@ function Doctors() {
           { label: 'Total Doctors', value: stats.total, color: '#dc2626', icon: <DoctorIcon /> },
           { label: 'Active Doctors', value: stats.active, color: '#059669', icon: <ActiveIcon /> },
           { label: 'ML Access Enabled', value: stats.mlAccess, color: '#0891b2', icon: <MLIcon /> },
-          { label: 'On Leave', value: stats.onLeave, color: '#f59e0b', icon: <LeaveIcon /> },
+          { label: 'Chat Access Enabled', value: stats.chatAccess, color: '#7c3aed', icon: <ChatIcon /> },
         ].map(({ label, value, color, icon }) => (
           <Grid item xs={12} sm={6} md={3} key={label}>
             <Card sx={{ textAlign: 'center', p: 2 }}>
@@ -302,13 +321,14 @@ function Doctors() {
                   <TableCell sx={{ fontWeight: 600 }}>Experience</TableCell>
                   <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
                   <TableCell sx={{ fontWeight: 600 }}>ML Access</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>Chat Access</TableCell>
                   <TableCell sx={{ fontWeight: 600 }}>Actions</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {filteredDoctors.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} align="center" sx={{ py: 6, color: 'text.secondary' }}>
+                    <TableCell colSpan={8} align="center" sx={{ py: 6, color: 'text.secondary' }}>
                       {searchTerm ? 'No doctors match your search.' : 'No doctors found.'}
                     </TableCell>
                   </TableRow>
@@ -343,11 +363,40 @@ function Doctors() {
                         />
                       </TableCell>
                       <TableCell>
-                        <Chip
-                          label={doctor.mlAccess ? 'Enabled' : 'Disabled'}
-                          color={doctor.mlAccess ? 'info' : 'default'}
-                          size="small"
-                        />
+                        <button
+                          onClick={() => handleToggleAccess(doctor._id || doctor.id, 'mlAccess', !doctor.mlAccess)}
+                          style={{
+                            padding: '4px 14px',
+                            borderRadius: 20,
+                            border: 'none',
+                            cursor: 'pointer',
+                            fontWeight: 500,
+                            fontSize: 13,
+                            background: doctor.mlAccess ? '#1b5e20' : '#e0e0e0',
+                            color: doctor.mlAccess ? '#fff' : '#555',
+                            transition: 'all 0.2s',
+                          }}
+                        >
+                          {doctor.mlAccess ? 'Enabled' : 'Disabled'}
+                        </button>
+                      </TableCell>
+                      <TableCell>
+                        <button
+                          onClick={() => handleToggleAccess(doctor._id || doctor.id, 'chatAccess', !doctor.chatAccess)}
+                          style={{
+                            padding: '4px 14px',
+                            borderRadius: 20,
+                            border: 'none',
+                            cursor: 'pointer',
+                            fontWeight: 500,
+                            fontSize: 13,
+                            background: doctor.chatAccess ? '#0d47a1' : '#e0e0e0',
+                            color: doctor.chatAccess ? '#fff' : '#555',
+                            transition: 'all 0.2s',
+                          }}
+                        >
+                          {doctor.chatAccess ? 'Enabled' : 'Disabled'}
+                        </button>
                       </TableCell>
                       <TableCell>
                         <Box sx={{ display: 'flex', gap: 0.5 }}>
@@ -505,6 +554,17 @@ function Doctors() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={3000}
+        onClose={() => setSnackbar(s => ({ ...s, open: false }))}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert severity={snackbar.severity} onClose={() => setSnackbar(s => ({ ...s, open: false }))}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

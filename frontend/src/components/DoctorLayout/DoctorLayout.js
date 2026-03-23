@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { logout } from '../../store/slices/authSlice';
 import './DoctorLayout.css';
+import DoctorChatbot from '../Chatbot/DoctorChatbot';
 
 const DoctorLayout = ({ children, activeTab }) => {
   const navigate = useNavigate();
@@ -117,6 +118,7 @@ const DoctorLayout = ({ children, activeTab }) => {
           </div>
         )}
       </div>
+      <DoctorChatbot doctorName={user?.name || 'Doctor'} />
     </div>
   );
 };

@@ -17,18 +17,42 @@ const requireRole = (...roles) => (req, res, next) => {
 };
 
 // ── Shared validation helper ────────────────────────────────────────────────
-async function validatePolicy(policyNumber, diagnosisCode, billAmount) {
+async function validatePolicy(policyNumber, diagnosisCode, billAmount, diagnosisName) {
   const policy = await InsurancePolicy.findOne({ policyNumber });
   if (!policy) return { isValid: false, reason: 'Policy not found', status: 404 };
-  if (policy.status !== 'active') return { isValid: false, reason: 'Policy is not active', policy };
+  if (policy.status !== 'active') {
+    return { isValid: false, reason: `Policy is not active (status: ${policy.status})`, policy };
+  }
   if (new Date() > policy.expiryDate) {
     policy.status = 'expired';
     await policy.save();
     return { isValid: false, reason: `Policy expired on ${policy.expiryDate.toDateString()}`, policy };
   }
-  if (diagnosisCode && policy.coveredDiagnoses.length > 0 && !policy.coveredDiagnoses.includes(diagnosisCode)) {
-    return { isValid: false, reason: 'Diagnosis not covered by this policy', policy };
+
+  // Fuzzy diagnosis matching — match by code OR name, case-insensitive
+  if (policy.coveredDiagnoses.length > 0 && (diagnosisCode || diagnosisName)) {
+    const codeInput = (diagnosisCode || '').toLowerCase().trim();
+    const nameInput = (diagnosisName || '').toLowerCase().trim();
+    const isCovered = policy.coveredDiagnoses.some(covered => {
+      const c = covered.toLowerCase();
+      return (
+        c === codeInput ||
+        c === nameInput ||
+        (nameInput && c.includes(nameInput)) ||
+        (nameInput && nameInput.includes(c)) ||
+        (codeInput && c.includes(codeInput))
+      );
+    });
+    if (!isCovered) {
+      return {
+        isValid: false,
+        reason: `Diagnosis "${diagnosisName || diagnosisCode}" is not covered by this policy. Covered conditions: ${policy.coveredDiagnoses.join(', ')}`,
+        coveredDiagnoses: policy.coveredDiagnoses,
+        policy
+      };
+    }
   }
+
   const available = policy.coverageAmount - policy.usedAmount;
   if (billAmount && (policy.usedAmount + billAmount) > policy.coverageAmount) {
     return { isValid: false, reason: 'Coverage limit exceeded', remaining: available, policy };
@@ -49,9 +73,9 @@ async function validatePolicy(policyNumber, diagnosisCode, billAmount) {
 // POST /api/insurance/validate
 router.post('/validate', auth, async (req, res) => {
   try {
-    const { policyNumber, patientId, diagnosisCode, billAmount } = req.body;
+    const { policyNumber, patientId, diagnosisCode, diagnosisName, billAmount } = req.body;
     if (!policyNumber) return res.status(400).json({ message: 'policyNumber is required' });
-    const result = await validatePolicy(policyNumber, diagnosisCode, billAmount);
+    const result = await validatePolicy(policyNumber, diagnosisCode, billAmount, diagnosisName);
     if (result.status === 404) return res.status(404).json({ isValid: false, reason: result.reason });
     const { policy, ...rest } = result;
     res.json(rest);
@@ -68,21 +92,19 @@ router.post('/claim/submit', auth, async (req, res) => {
       return res.status(400).json({ message: 'Missing required fields' });
     }
 
-    // Internal validation
-    const validation = await validatePolicy(policyNumber, diagnosisCode, billAmount);
+    const validation = await validatePolicy(policyNumber, diagnosisCode, billAmount, diagnosisName);
     if (!validation.isValid) {
       return res.status(400).json({ message: validation.reason, remaining: validation.remaining });
     }
     const { policy, approvedAmount, patientLiability } = validation;
 
-    // Call ML fraud detection
     let fraudScore = 0;
     let fraudReasons = [];
     let isFlagged = false;
     try {
       const mlRes = await axios.post(`${ML_SERVICE_URL}/insurance/fraud_detect`, {
         claimAmount: billAmount,
-        diagnosisCode: diagnosisName, // ML uses diagnosis name as key
+        diagnosisCode: diagnosisName,
         patientId: String(patientId),
         policyNumber
       }, { timeout: 5000 });
@@ -140,28 +162,23 @@ router.patch('/claim/:claimId/review', auth, requireRole('Administrator'), async
         $inc: { usedAmount: claim.approvedAmount }
       });
     } else {
-      // REJECT: revert bill and payment
       claim.status = 'rejected';
       claim.approvedAmount = 0;
       claim.rejectionReason = rejectionReason || 'Claim rejected by admin';
 
-      // Find bill linked to this claim via insuranceClaimId
       const bill = await Bill.findOne({ insuranceClaimId: claim._id });
       if (bill) {
-        // If a successful payment exists for this bill, mark it refunded
         if (bill.paymentStatus === 'Paid') {
           await Payment.findOneAndUpdate(
             { billId: bill._id, status: 'success' },
             { status: 'refunded', refundReason: 'Insurance claim rejected', refundedAt: new Date() }
           );
         }
-        // Revert bill: remove insurance deduction, reset to full amount unpaid
         bill.paymentStatus = 'Pending';
         bill.paidAmount = 0;
         bill.insuranceClaimId = undefined;
         await bill.save();
 
-        // Revert policy usedAmount if it was incremented (shouldn't be on pending, but guard anyway)
         if (bill.insuranceCovered > 0) {
           await InsurancePolicy.findByIdAndUpdate(claim.policyId, {
             $inc: { usedAmount: -bill.insuranceCovered }
@@ -225,7 +242,26 @@ router.get('/patient/:patientId/active-claim', auth, async (req, res) => {
   }
 });
 
-// GET /api/insurance/policy/:patientId
+// GET /api/insurance/patient/:patientId/policy — auto-fill for claim form
+router.get('/patient/:patientId/policy', auth, async (req, res) => {
+  try {
+    const policy = await InsurancePolicy.findOne({
+      patientId: req.params.patientId,
+      status: 'active'
+    }).sort({ createdAt: -1 });
+    if (!policy) return res.json({ policy: null });
+    if (new Date() > policy.expiryDate) {
+      policy.status = 'expired';
+      await policy.save();
+      return res.json({ policy: null });
+    }
+    res.json({ policy });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// GET /api/insurance/policy/:patientId — legacy route
 router.get('/policy/:patientId', auth, async (req, res) => {
   try {
     const policy = await InsurancePolicy.findOne({ patientId: req.params.patientId })
@@ -317,7 +353,7 @@ router.post('/seed', auth, requireRole('Administrator'), async (req, res) => {
   }
 });
 
-// Alias: /claims/:claimId/review → same handler
+// Alias: /claims/:claimId/review
 router.patch('/claims/:claimId/review', auth, requireRole('Administrator'), async (req, res) => {
   try {
     const { status, adminNote, rejectionReason } = req.body;

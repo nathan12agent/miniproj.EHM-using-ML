@@ -8,8 +8,8 @@ const insurancePolicySchema = new mongoose.Schema({
   },
   patientId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Patient',
-    required: true
+    ref: 'Patient'
+    // optional — standalone policies not linked to a specific patient
   },
   providerName: {
     type: String,
@@ -46,14 +46,13 @@ const insurancePolicySchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['active', 'expired', 'cancelled'],
+    enum: ['active', 'expired', 'cancelled', 'suspended'],
     default: 'active'
   },
   coveredDiagnoses: [{
     type: String,
     trim: true
   }],
-
   isSeeded: {
     type: Boolean,
     default: false

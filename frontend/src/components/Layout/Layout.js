@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Drawer,
@@ -35,10 +35,12 @@ import {
   Settings as SettingsIcon,
   HealthAndSafety as InsuranceIcon,
   Payment as PaymentIcon,
+  Message as MessageIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { logout } from '../../store/slices/authSlice';
+import api from '../../services/api';
 
 const drawerWidth = 280;
 
@@ -55,10 +57,25 @@ const menuItems = [
   { text: 'ML Dashboard', icon: <MLIcon />, path: '/admin/ml-dashboard' },
   { text: 'Insurance Claims', icon: <InsuranceIcon />, path: '/admin/insurance' },
   { text: 'Payment Portal', icon: <PaymentIcon />, path: '/admin/payment' },
+  { text: 'Doctor Requests', icon: <MessageIcon />, path: '/admin/doctor-requests' },
 ];
 
 function Layout({ children }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [pendingRequests, setPendingRequests] = useState(0);
+
+  const fetchPendingCount = useCallback(async () => {
+    try {
+      const { data } = await api.get('/admin/requests', { params: { status: 'pending' } });
+      setPendingRequests(data.pendingCount || 0);
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    fetchPendingCount();
+    const interval = setInterval(fetchPendingCount, 30000);
+    return () => clearInterval(interval);
+  }, [fetchPendingCount]);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const navigate = useNavigate();
@@ -138,7 +155,13 @@ function Layout({ children }) {
               >
                 <ListItemIcon sx={{ minWidth: 40 }}>{item.icon}</ListItemIcon>
                 <ListItemText 
-                  primary={item.text}
+                  primary={
+                    item.text === 'Doctor Requests' && pendingRequests > 0 ? (
+                      <Badge badgeContent={pendingRequests} color="error" max={99}>
+                        <span style={{ paddingRight: 8 }}>{item.text}</span>
+                      </Badge>
+                    ) : item.text
+                  }
                   primaryTypographyProps={{
                     fontSize: '0.875rem',
                     fontWeight: 500,

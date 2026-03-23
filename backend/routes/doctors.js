@@ -119,9 +119,11 @@ router.post('/', auth, [
  */
 router.put('/:id', auth, async (req, res) => {
   try {
+    // Exclude access control fields from general updates
+    const { mlAccess, chatAccess, ...safeBody } = req.body;
     const doctor = await Doctor.findByIdAndUpdate(
       req.params.id,
-      { ...req.body, updatedBy: req.user.id },
+      { $set: { ...safeBody, updatedBy: req.user.id } },
       { new: true, runValidators: true }
     );
 
@@ -157,6 +159,27 @@ router.delete('/:id', auth, async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// PATCH /api/doctors/:id/access — toggle mlAccess and/or chatAccess
+router.patch('/:id/access', auth, async (req, res) => {
+  try {
+    const { mlAccess, chatAccess } = req.body;
+    const update = {};
+    if (mlAccess !== undefined) update.mlAccess = mlAccess;
+    if (chatAccess !== undefined) update.chatAccess = chatAccess;
+
+    const doctor = await Doctor.findByIdAndUpdate(
+      req.params.id,
+      { $set: update },
+      { new: true }
+    );
+    if (!doctor) return res.status(404).json({ message: 'Doctor not found' });
+    res.json({ success: true, doctor });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: err.message });
   }
 });
 

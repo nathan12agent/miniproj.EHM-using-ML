@@ -3,7 +3,7 @@ import * as bedService from '../../services/bedService';
 
 export const fetchBeds = createAsyncThunk('beds/fetchAll', async (params = {}, { rejectWithValue }) => {
   try {
-    const res = await bedService.getAllBeds(params.ward, params.status);
+    const res = await bedService.getAllBeds(params.ward, params.status, params.purpose);
     return res.data;
   } catch (err) {
     return rejectWithValue(err.response?.data?.message || 'Failed to fetch beds');
@@ -30,7 +30,7 @@ export const updateBedStatus = createAsyncThunk('beds/updateStatus', async ({ id
 
 const bedSlice = createSlice({
   name: 'beds',
-  initialState: { beds: [], stats: null, selectedWard: 'All', loading: false, error: null },
+  initialState: { beds: [], stats: null, breakdown: null, selectedWard: 'All', loading: false, error: null },
   reducers: {
     setSelectedWard: (state, action) => { state.selectedWard = action.payload; },
     clearError: (state) => { state.error = null; },
@@ -41,6 +41,7 @@ const bedSlice = createSlice({
       .addCase(fetchBeds.fulfilled, (s, a) => {
         s.loading = false;
         s.beds = a.payload.beds || a.payload;
+        s.breakdown = a.payload.breakdown || null;
       })
       .addCase(fetchBeds.rejected, (s, a) => { s.loading = false; s.error = a.payload; })
       .addCase(fetchBedStats.fulfilled, (s, a) => { s.stats = a.payload; })

@@ -14,7 +14,6 @@ import Dashboard from './pages/Dashboard/Dashboard';
 import Patients from './pages/Patients/Patients';
 import Doctors from './pages/Doctors/Doctors';
 import Appointments from './pages/Appointments/Appointments';
-import BedManagement from './pages/BedManagement/BedManagement';
 import Inventory from './pages/Inventory/Inventory';
 import Billing from './pages/Billing/Billing';
 import Reports from './pages/Reports/Reports';
@@ -39,6 +38,7 @@ import DoctorLogin from './pages/DoctorLogin/DoctorLogin';
 import DoctorDashboard from './pages/DoctorDashboard/DoctorDashboard';
 import DiseaseHelper from './pages/DiseaseHelper/DiseaseHelper';
 import DoctorLayout from './components/DoctorLayout/DoctorLayout';
+import DoctorRequests from './pages/Admin/DoctorRequests';
 
 // Create Material-UI theme - Medical Red Theme
 const theme = createTheme({
@@ -337,7 +337,7 @@ function App() {
                         <Route path="/patients/*" element={<Patients />} />
                         <Route path="/doctors/*" element={<Doctors />} />
                         <Route path="/appointments/*" element={<Appointments />} />
-                        <Route path="/bed-management" element={<BedManagement />} />
+                        <Route path="/bed-management" element={<BedManagementNew />} />
                         <Route path="/inventory/*" element={<Inventory />} />
                         <Route path="/billing/*" element={<Billing />} />
                         <Route path="/reports" element={<Reports />} />
@@ -347,7 +347,7 @@ function App() {
                         <Route path="/insurance" element={<InsuranceDashboard />} />
                         <Route path="/payment" element={<PaymentPortal />} />
                         <Route path="/nurses" element={<NurseManagement />} />
-                        <Route path="/bed-management-new" element={<BedManagementNew />} />
+                        <Route path="/doctor-requests" element={<DoctorRequests />} />
                       </Routes>
                     </Layout>
                   </ProtectedRoute>

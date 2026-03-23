@@ -171,6 +171,10 @@ router.post('/detect-disease', auth, async (req, res) => {
       return res.status(404).json({ message: 'Doctor profile not found' });
     }
 
+    if (!doctor.mlAccess) {
+      return res.status(403).json({ message: 'ML access not enabled for your account. Please contact admin.' });
+    }
+
     const { patientId, symptoms, vitalSigns, appointmentId, medicalFiles } = req.body;
 
     // Call ML service
