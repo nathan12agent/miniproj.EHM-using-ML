@@ -18,18 +18,22 @@ router.get('/', auth, async (req, res) => {
     if (purpose) query.bedPurpose = purpose;
 
     const beds = await Bed.find(query)
-      .populate('patient', 'firstName lastName patientId dateOfBirth gender')
+      .populate({
+        path: 'patient',
+        select: 'firstName lastName patientId dateOfBirth gender phone condition assignedDoctor',
+        populate: { path: 'assignedDoctor', select: 'firstName lastName specialization' }
+      })
       .sort({ bedPurpose: 1, ward: 1, bedNumber: 1 });
 
     const patientBeds   = beds.filter(b => b.bedPurpose === 'patient_bed');
     const doctorRooms   = beds.filter(b => b.bedPurpose === 'doctor_room');
-    const nurseStations = beds.filter(b => b.bedPurpose === 'nurse_station');
+    const nurseStations = bedsstation');
 
     res.json({
       beds,
       breakdown: {
         patientBeds:   { total: patientBeds.length,   available: patientBeds.filter(b => b.status === 'Available').length },
-        doctorRooms:   { total: doctorRooms.length,   available: doctorRooms.filter(b => b.status === 'Available').length },
+  { total: doctorRooms.length,   available: doctorRooms.filter(b => b.status === 'Available').length },
         nurseStations: { total: nurseStations.length, available: nurseStations.filter(b => b.status === 'Available').length },
       }
     });
@@ -44,7 +48,6 @@ router.get('/stats', auth, async (req, res) => {
   try {
     const stats = await Bed.getOccupancyStats();
     
-    // Calculate overall stats
     const overall = {
       total: 0,
       occupied: 0,
@@ -73,7 +76,11 @@ router.get('/stats', auth, async (req, res) => {
 router.get('/:id', auth, async (req, res) => {
   try {
     const bed = await Bed.findById(req.params.id)
-      .populate('patient', 'firstName lastName patientId dateOfBirth gender phone');
+      .populate({
+        path: 'patient',
+        select: 'firstN condition assignedDoctor',
+        populate: { path: 'assignedDoctor', select: 'firstName lastName specialization' }
+      });
     
     if (!bed) {
       return res.status(404).json({ message: 'Bed not found' });
@@ -89,7 +96,7 @@ router.get('/:id', auth, async (req, res) => {
 // Create new bed
 router.post('/', auth, [
   body('bedNumber').trim().notEmpty().withMessage('Bed number is required'),
-  body('ward').isIn(['ICU', 'General', 'Emergency', 'Pediatric', 'Maternity', 'Doctor Wing', 'Nurse Station']).withMessage('Invalid ward')
+  b 'Pediatric', 'Maternity', 'Doctor Wing', 'Nurse Station']).withMessage('Invalid ward')
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -113,7 +120,7 @@ router.post('/', auth, [
     if (error.code === 11000) {
       return res.status(400).json({ message: 'Bed number already exists' });
     }
-    res.status(500).json({ message: 'Server error' });
+    ressage: 'Server error' });
   }
 });
 
@@ -137,7 +144,7 @@ router.post('/:id/assign', auth, [
     }
 
     if (bed.status === 'Maintenance') {
-      return res.status(400).json({ message: 'Bed is under maintenance' });
+on({ message: 'Bed is under maintenance' });
     }
 
     const patient = await Patient.findById(req.body.patientId);
@@ -145,10 +152,19 @@ router.post('/:id/assign', auth, [
       return res.status(404).json({ message: 'Patient not found' });
     }
 
-    await bed.assignToPatient(req.body.patientId, req.user.id);
+    // Smart bed assignment check - do not assign beds for minor injuries
+    if (patient.injurySeverity === 'Minor') {
+      return res.status(400).json({ message: 'Patient has a minor injury and does not require a bed (outpatient care only).' });
+    }
+
+    , req.user.id);
 
     const updatedBed = await Bed.findById(bed._id)
-      .populate('patient', 'firstName lastName patientId');
+      .populate({
+        path: 'patient',
+        select: 'firstName lastName patientId dateOfBirth gender phone condition assignedDoctor',
+        populate: { path: 'assignedDoctor', select: 'firstName lastName specialization' }
+      });
 
     res.json({
       message: 'Bed assigned successfully',
@@ -179,7 +195,7 @@ router.post('/:id/discharge', auth, async (req, res) => {
       bed,
       patientId
     });
-  } catch (error) {
+ catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server error' });
   }
@@ -201,7 +217,7 @@ router.put('/:id', auth, async (req, res) => {
     if (notes !== undefined) {
       bed.notes = notes;
     }
-    bed.updatedBy = req.user.id;
+    bed.updatedBy
 
     await bed.save();
 
@@ -237,7 +253,7 @@ router.delete('/:id', auth, async (req, res) => {
 router.post('/auto-allocate/patients', auth, async (req, res) => {
   try {
     // Find all patient IDs already assigned to a bed
-    const occupiedBeds = await Bed.find({ bedPurpose: 'patient_bed', status: 'Occupied', patient: { $ne: null } }).select('patient');
+   Beds = await Bed.find({ bedPurpose: 'patient_bed', status: 'Occupied', patient: { $ne: null } }).select('patient');
     const assignedPatientIds = occupiedBeds.map(b => b.patient?.toString()).filter(Boolean);
 
     // Active patients not yet in a bed
@@ -344,7 +360,7 @@ router.post('/auto-allocate/doctors', auth, async (req, res) => {
         bedPurpose: 'doctor_room',
         'allocatedTo.id': doctor._id.toString()
       });
-      if (existing) {
+     if (existing) {
         results.push({ doctor: name, status: 'already_allocated', room: existing.bedNumber });
         continue;
       }
@@ -456,7 +472,7 @@ router.post('/auto-allocate/nurses', auth, async (req, res) => {
 });
 
 // POST /api/beds/release-all/doctors — release all doctor room allocations
-router.post('/release-all/doctors', auth, async (req, res) => {
+router.post('/release-a(req, res) => {
   try {
     const result = await Bed.updateMany(
       { bedPurpose: 'doctor_room', status: 'Occupied' },
@@ -474,7 +490,7 @@ router.post('/release-all/doctors', auth, async (req, res) => {
   }
 });
 
-// POST /api/beds/release-all/nurses — release all nurse station allocations
+// POST /api/bedsnurses — release all nurse station allocations
 router.post('/release-all/nurses', auth, async (req, res) => {
   try {
     const result = await Bed.updateMany(

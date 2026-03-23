@@ -12,21 +12,21 @@ const patientSchema = new mongoose.Schema({
   },
   firstName: {
     type: String,
-    required: true,
+    required: false,
     trim: true
   },
   lastName: {
     type: String,
-    required: true,
+    required: false,
     trim: true
   },
   dateOfBirth: {
     type: Date,
-    required: true
+    required: false
   },
   gender: {
     type: String,
-    required: true,
+    required: false,
     enum: ['Male', 'Female', 'Other']
   },
   bloodGroup: {
@@ -37,7 +37,7 @@ const patientSchema = new mongoose.Schema({
   // Contact Information
   phone: {
     type: String,
-    required: true
+    required: false
   },
   email: {
     type: String,
@@ -60,6 +60,16 @@ const patientSchema = new mongoose.Schema({
   },
   
   // Medical Information
+  condition: {
+    type: String,
+    enum: [
+      'Cold/Flu', 'Fever', 'Minor Cut/Wound', 'Skin Rash', 'Eye Infection', 'Hearing Loss',
+      'Stomach Pain', 'Acid Reflux', 'Migraine', 'Fracture', 'Arthritis', 'Asthma', 'Kidney Stones',
+      'Heart Attack', 'Chest Pain', 'Stroke', 'Seizures', 'Cancer', 'Severe Trauma', 'Burns', 'Spinal Injury', 'Pneumonia', 'Other'
+    ],
+    default: 'Other'
+  },
+  
   medicalHistory: [{
     condition: String,
     diagnosedDate: Date,
@@ -133,7 +143,7 @@ const patientSchema = new mongoose.Schema({
       default: Date.now
     }
   },
-  
+
   // Auto-Assignment Metadata (from ML service)
   autoAssignment: {
     isAutoAssigned: {
@@ -165,6 +175,13 @@ const patientSchema = new mongoose.Schema({
       enum: ['ml_auto', 'manual'],
       default: 'manual'
     }
+  },
+
+  // Injury / Triage Information
+  injurySeverity: {
+    type: String,
+    enum: ['Minor', 'Moderate', 'Severe', 'Critical'],
+    default: 'Minor'
   },
   
   // System Information
@@ -206,6 +223,12 @@ patientSchema.index({ 'riskScores.mortalityRisk': -1 });
 // Virtual for full name
 patientSchema.virtual('fullName').get(function() {
   return `${this.firstName} ${this.lastName}`;
+});
+
+// Virtual: does this patient require a bed assignment?
+// Minor injuries (cuts, sprains, mild illness) are outpatient — no bed needed.
+patientSchema.virtual('requiresBed').get(function() {
+  return ['Moderate', 'Severe', 'Critical'].includes(this.injurySeverity);
 });
 
 // Virtual for age calculation

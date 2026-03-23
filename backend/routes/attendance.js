@@ -6,7 +6,7 @@ const auth = require('../middleware/auth');
 
 // Clock In
 router.post('/clock-in', auth, [
-  body('staffModel').isIn(['User', 'Doctor']),
+  body('staffModel').isIn(['User', 'Doctor', 'Nurse']),
 ], async (req, res) => {
   try {
     const errors = validationResult(req);

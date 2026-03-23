@@ -1,406 +1,543 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  Container, Row, Col, Card, Table, Button, Badge, 
-  Form, Modal, Alert, Spinner 
-} from 'react-bootstrap';
-import { 
-  FaUserPlus, FaBrain, FaChartBar, FaCog, 
-  FaExclamationTriangle, FaCheckCircle 
-} from 'react-icons/fa';
-import axios from 'axios';
-import './StaffManagement.css';
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  Box, Typography, Button, Table, TableBody, TableCell,
+  TableContainer, TableHead, TableRow, Card, CardContent,
+  Grid, Dialog, DialogTitle, DialogContent, DialogActions,
+  FormControl, InputLabel, Select, MenuItem, Chip, Avatar,
+  Tabs, Tab, TextField, InputAdornment, CircularProgress,
+  Alert, IconButton, Divider, Tooltip, LinearProgress,
+} from '@mui/material';
+import {
+  Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon,
+  Search as SearchIcon, LocalHospital as DoctorIcon,
+  PersonPin as NurseIcon, AccessTime as AttendanceIcon,
+  Refresh as RefreshIcon, BedOutlined as BedIcon,
+  CheckCircle as OkIcon, Warning as WarnIcon,
+  HealingOutlined as HealingIcon,
+} from '@mui/icons-material';
+import { doctorsAPI, nursesAPI, attendanceAPI } from '../../services/api';
 
-const StaffManagement = () => {
-  // State management
-  const [staff, setStaff] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [mlLoading, setMlLoading] = useState(false);
-  const [kpis, setKpis] = useState({
-    totalStaff: 0,
-    onDuty: 0,
-    shortageAlert: 0,
-    avgAbsenteeismRisk: 0,
-    highBurnoutCount: 0
-  });
-  
-  const [filters, setFilters] = useState({
-    role: 'all',
-    department: 'all',
-    searchTerm: ''
-  });
-  
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [selectedStaff, setSelectedStaff] = useState(null);
-  const [alert, setAlert] = useState(null);
+// ─── Severity helpers ────────────────────────────────────────────────────────
+const SEVERITIES = ['Minor', 'Moderate', 'Severe', 'Critical'];
+const WARDS = ['ICU', 'General', 'Emergency', 'Pediatric', 'Maternity'];
+const SHIFTS = ['Morning', 'Evening', 'Night'];
 
-  // Fetch staff data on component mount
-  useEffect(() => {
-    fetchStaffData();
-    fetchKPIs();
-  }, []);
+const severityColor = (s) => {
+  const map = { Minor: 'success', Moderate: 'warning', Severe: 'error', Critical: 'error' };
+  return map[s] || 'default';
+};
 
-  const fetchStaffData = async () => {
+// ─── Smart Assign Panel ───────────────────────────────────────────────────────
+function SmartAssignPanel() {
+  const [patientId, setPatientId] = useState('');
+  const [severity, setSeverity] = useState('Minor');
+  const [ward, setWard] = useState('General');
+  const [result, setResult] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState(null);
+
+  const handleAssign = async () => {
+    setLoading(true); setErr(null); setResult(null);
     try {
-      setLoading(true);
-      const response = await axios.get('/api/admin/staff', {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-      });
-      setStaff(response.data.staff);
-    } catch (error) {
-      showAlert('error', 'Failed to fetch staff data');
+      const res = await nursesAPI.smartAssign({ patientId, injurySeverity: severity, ward });
+      setResult(res.data);
+    } catch (e) {
+      setErr(e.response?.data?.message || 'Assignment failed.');
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchKPIs = async () => {
-    try {
-      const response = await axios.get('/api/admin/staff/stats', {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-      });
-      setKpis(response.data);
-    } catch (error) {
-      console.error('Failed to fetch KPIs', error);
-    }
-  };
+  return (
+    <Card sx={{ mb: 3, border: '2px solid', borderColor: 'primary.light' }}>
+      <CardContent>
+        <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+          <HealingIcon color="primary" /> Smart Staff Assign — Injury Triage
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+          Automatically determines whether a bed is required based on injury severity.
+          <strong> Minor injuries</strong> are handled as outpatient — no bed assigned, saving resources.
+        </Typography>
 
-  const runMLPredictions = async () => {
-    try {
-      setMlLoading(true);
-      showAlert('info', 'Running ML predictions... This may take a moment.');
-      
-      // Run all ML predictions
-      await Promise.all([
-        axios.post('http://localhost:5001/ml/staff/predict_absenteeism'),
-        axios.post('http://localhost:5001/ml/staff/predict_burnout'),
-        axios.post('http://localhost:5001/ml/staff/cluster_staff')
-      ]);
-      
-      // Refresh data
-      await fetchStaffData();
-      await fetchKPIs();
-      
-      showAlert('success', 'ML predictions completed successfully!');
-    } catch (error) {
-      showAlert('error', 'ML predictions failed. Service may be unavailable.');
-    } finally {
-      setMlLoading(false);
-    }
-  };
+        {/* Severity preview */}
+        <Box sx={{ mb: 3, p: 2, bgcolor: 'grey.50', borderRadius: 2 }}>
+          <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: 1 }}>
+            Current Selection Preview
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 1, mt: 1, flexWrap: 'wrap' }}>
+            {SEVERITIES.map(s => (
+              <Chip
+                key={s}
+                label={s}
+                color={s === severity ? severityColor(s) : 'default'}
+                variant={s === severity ? 'filled' : 'outlined'}
+                onClick={() => setSeverity(s)}
+                sx={{ cursor: 'pointer', fontWeight: s === severity ? 700 : 400 }}
+              />
+            ))}
+          </Box>
+          <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+            {SEVERITIES.indexOf(severity) === 0
+              ? <OkIcon color="success" />
+              : <WarnIcon color={severity === 'Moderate' ? 'warning' : 'error'} />}
+            <Typography variant="body2" sx={{ fontWeight: 600 }}>
+              {SEVERITIES.indexOf(severity) === 0
+                ? 'No bed will be assigned — outpatient care only'
+                : `Bed assignment required — ${severity.toLowerCase()} case`}
+            </Typography>
+          </Box>
+        </Box>
 
-  const showAlert = (type, message) => {
-    setAlert({ type, message });
-    setTimeout(() => setAlert(null), 5000);
-  };
+        <Grid container spacing={2}>
+          <Grid item xs={12} md={4}>
+            <TextField
+              fullWidth label="Patient ID (MongoDB _id)" value={patientId}
+              onChange={e => setPatientId(e.target.value)}
+              size="small"
+            />
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <FormControl fullWidth size="small">
+              <InputLabel>Injury Severity</InputLabel>
+              <Select value={severity} label="Injury Severity" onChange={e => setSeverity(e.target.value)}>
+                {SEVERITIES.map(s => <MenuItem key={s} value={s}>{s}</MenuItem>)}
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <FormControl fullWidth size="small">
+              <InputLabel>Ward</InputLabel>
+              <Select value={ward} label="Ward" onChange={e => setWard(e.target.value)}>
+                {WARDS.map(w => <MenuItem key={w} value={w}>{w}</MenuItem>)}
+              </Select>
+            </FormControl>
+          </Grid>
+        </Grid>
 
-  const getRiskBadge = (risk, value) => {
-    if (!value && value !== 0) return <Badge bg="secondary">N/A</Badge>;
-    
-    if (risk === 'Low' || value < 30) {
-      return <Badge bg="success">{value}% 🟢</Badge>;
-    } else if (risk === 'Medium' || value < 60) {
-      return <Badge bg="warning">{value}% 🟡</Badge>;
-    } else {
-      return <Badge bg="danger">{value}% 🔴</Badge>;
-    }
-  };
+        <Button
+          variant="contained" onClick={handleAssign} disabled={!patientId || loading}
+          sx={{ mt: 2 }} startIcon={loading ? <CircularProgress size={16} color="inherit" /> : <NurseIcon />}>
+          Smart Assign
+        </Button>
 
-  const filteredStaff = staff.filter(s => {
-    const matchesRole = filters.role === 'all' || s.role === filters.role;
-    const matchesDept = filters.department === 'all' || s.department === filters.department;
-    const matchesSearch = s.name.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
-                         s.staffId.toLowerCase().includes(filters.searchTerm.toLowerCase());
-    return matchesRole && matchesDept && matchesSearch;
+        {err && <Alert severity="error" sx={{ mt: 2 }}>{err}</Alert>}
+
+        {result && (
+          <Alert
+            severity={result.bedRequired ? 'warning' : 'success'}
+            sx={{ mt: 2 }}
+            icon={result.bedRequired ? <WarnIcon /> : <OkIcon />}
+          >
+            <Typography variant="body2" sx={{ fontWeight: 700 }}>{result.message}</Typography>
+            <Box sx={{ mt: 1, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+              <Chip size="small" label={result.wardInfo?.careType} color={result.bedRequired ? 'warning' : 'success'} />
+              <Chip size="small" label={result.bedRequired ? '🛏 Bed Required' : '✓ No Bed Needed'} variant="outlined" color={result.bedRequired ? 'error' : 'success'} />
+              {result.assignedNurse ? (
+                <Chip size="small" label={`Nurse: ${result.assignedNurse.firstName} ${result.assignedNurse.lastName}`} color="info" />
+              ) : (
+                <Chip size="small" label="No available nurse in ward" color="default" />
+              )}
+            </Box>
+          </Alert>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Nurses Tab ──────────────────────────────────────────────────────────────
+function NursesTab() {
+  const [nurses, setNurses] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState(null);
+  const [wardFilter, setWardFilter] = useState('All');
+  const [addOpen, setAddOpen] = useState(false);
+  const [newNurse, setNewNurse] = useState({
+    firstName: '', lastName: '', email: '', phone: '',
+    ward: 'General', shift: 'Morning', specialization: '', experience: 0,
   });
+  const [actionLoading, setActionLoading] = useState(false);
+
+  const fetchNurses = useCallback(async () => {
+    setLoading(true); setErr(null);
+    try {
+      const params = wardFilter !== 'All' ? { ward: wardFilter } : {};
+      const res = await nursesAPI.getAll(params);
+      setNurses(res.data.nurses || res.data || []);
+    } catch (e) {
+      setErr('Failed to load nurses.');
+    } finally {
+      setLoading(false);
+    }
+  }, [wardFilter]);
+
+  useEffect(() => { fetchNurses(); }, [fetchNurses]);
+
+  const handleAdd = async () => {
+    setActionLoading(true);
+    try {
+      await nursesAPI.create(newNurse);
+      setAddOpen(false);
+      setNewNurse({ firstName: '', lastName: '', email: '', phone: '', ward: 'General', shift: 'Morning', specialization: '', experience: 0 });
+      fetchNurses();
+    } catch (e) {
+      setErr(e.response?.data?.message || 'Failed to add nurse.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    try {
+      await nursesAPI.delete(id);
+      fetchNurses();
+    } catch (e) {
+      setErr(e.response?.data?.message || 'Cannot delete nurse with assigned patients.');
+    }
+  };
 
   return (
-    <Container fluid className="staff-management-dashboard">
-      {/* Alert */}
-      {alert && (
-        <Alert variant={alert.type} dismissible onClose={() => setAlert(null)}>
-          {alert.message}
-        </Alert>
+    <Box>
+      <SmartAssignPanel />
+
+      <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
+        <FormControl size="small" sx={{ minWidth: 160 }}>
+          <InputLabel>Filter by Ward</InputLabel>
+          <Select value={wardFilter} label="Filter by Ward" onChange={e => setWardFilter(e.target.value)}>
+            <MenuItem value="All">All Wards</MenuItem>
+            {WARDS.map(w => <MenuItem key={w} value={w}>{w}</MenuItem>)}
+          </Select>
+        </FormControl>
+        <Button variant="outlined" startIcon={<RefreshIcon />} onClick={fetchNurses}>Refresh</Button>
+        <Button variant="contained" startIcon={<AddIcon />} onClick={() => setAddOpen(true)}>Add Nurse</Button>
+      </Box>
+
+      {err && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setErr(null)}>{err}</Alert>}
+
+      {loading ? (
+        <Box sx={{ py: 6, textAlign: 'center' }}><CircularProgress /></Box>
+      ) : (
+        <TableContainer>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell sx={{ fontWeight: 600 }}>Nurse</TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>Ward</TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>Shift</TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>Patient Load</TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>Actions</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {nurses.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} align="center" sx={{ py: 4, color: 'text.secondary' }}>
+                    No nurses found.
+                  </TableCell>
+                </TableRow>
+              ) : nurses.map(n => {
+                const load = (n.assignedPatients?.length || 0);
+                const max = n.maxPatientLoad || 5;
+                const pct = Math.min((load / max) * 100, 100);
+                return (
+                  <TableRow key={n._id}>
+                    <TableCell>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <Avatar sx={{ bgcolor: '#0891b2', width: 36, height: 36, fontSize: '0.8rem' }}>
+                          {n.firstName?.[0]}{n.lastName?.[0]}
+                        </Avatar>
+                        <Box>
+                          <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                            {n.firstName} {n.lastName}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">{n.email}</Typography>
+                        </Box>
+                      </Box>
+                    </TableCell>
+                    <TableCell><Chip label={n.ward} size="small" /></TableCell>
+                    <TableCell>{n.shift}</TableCell>
+                    <TableCell>
+                      <Chip
+                        label={n.status}
+                        color={n.status === 'On Duty' ? 'success' : n.status === 'On Break' ? 'warning' : 'default'}
+                        size="small"
+                      />
+                    </TableCell>
+                    <TableCell sx={{ minWidth: 140 }}>
+                      <Box>
+                        <Typography variant="caption">{load}/{max} patients</Typography>
+                        <LinearProgress
+                          variant="determinate" value={pct}
+                          color={pct >= 80 ? 'error' : pct >= 50 ? 'warning' : 'success'}
+                          sx={{ mt: 0.5, borderRadius: 1, height: 6 }}
+                        />
+                      </Box>
+                    </TableCell>
+                    <TableCell>
+                      <Tooltip title="Remove nurse">
+                        <IconButton size="small" color="error" onClick={() => handleDelete(n._id)}>
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </TableContainer>
       )}
 
-      {/* Header */}
-      <Row className="mb-4">
-        <Col>
-          <h2 className="dashboard-title">
-            <FaChartBar className="me-2" />
-            Staff Management Dashboard
-          </h2>
-          <p className="text-muted">ML-Powered Staff Optimization & Predictive Analytics</p>
-        </Col>
-      </Row>
-
-      {/* KPI Cards */}
-      <Row className="mb-4">
-        <Col md={2}>
-          <Card className="kpi-card">
-            <Card.Body>
-              <h6 className="text-muted">Total Staff</h6>
-              <h3>{kpis.totalStaff}</h3>
-            </Card.Body>
-          </Card>
-        </Col>
-        <Col md={2}>
-          <Card className="kpi-card">
-            <Card.Body>
-              <h6 className="text-muted">On-Duty</h6>
-              <h3 className="text-success">{kpis.onDuty}</h3>
-            </Card.Body>
-          </Card>
-        </Col>
-        <Col md={3}>
-          <Card className={`kpi-card ${kpis.shortageAlert > 0 ? 'border-danger' : 'border-success'}`}>
-            <Card.Body>
-              <h6 className="text-muted">Shortage Alert</h6>
-              <h3 className={kpis.shortageAlert > 0 ? 'text-danger' : 'text-success'}>
-                {kpis.shortageAlert > 0 ? (
-                  <><FaExclamationTriangle /> {kpis.shortageAlert} Depts</>
-                ) : (
-                  <><FaCheckCircle /> All Good</>
-                )}
-              </h3>
-            </Card.Body>
-          </Card>
-        </Col>
-        <Col md={3}>
-          <Card className="kpi-card">
-            <Card.Body>
-              <h6 className="text-muted">Avg Absenteeism Risk</h6>
-              <h3>{kpis.avgAbsenteeismRisk.toFixed(1)}%</h3>
-            </Card.Body>
-          </Card>
-        </Col>
-        <Col md={2}>
-          <Card className="kpi-card border-warning">
-            <Card.Body>
-              <h6 className="text-muted">High Burnout</h6>
-              <h3 className="text-warning">{kpis.highBurnoutCount}</h3>
-            </Card.Body>
-          </Card>
-        </Col>
-      </Row>
-
-      <Row>
-        {/* Main Content - Staff Table */}
-        <Col md={9}>
-          <Card>
-            <Card.Header className="d-flex justify-content-between align-items-center">
-              <h5>Staff Directory</h5>
-              <div className="d-flex gap-2">
-                <Button 
-                  variant="primary" 
-                  size="sm"
-                  onClick={() => setShowAddModal(true)}
-                >
-                  <FaUserPlus className="me-1" /> Add Staff
-                </Button>
-                <Button 
-                  variant="success" 
-                  size="sm"
-                  onClick={runMLPredictions}
-                  disabled={mlLoading}
-                >
-                  {mlLoading ? (
-                    <><Spinner size="sm" className="me-1" /> Running...</>
-                  ) : (
-                    <><FaBrain className="me-1" /> Run ML Predictions</>
-                  )}
-                </Button>
-              </div>
-            </Card.Header>
-            <Card.Body>
-              {/* Filters */}
-              <Row className="mb-3">
-                <Col md={4}>
-                  <Form.Control
-                    type="text"
-                    placeholder="Search by name or ID..."
-                    value={filters.searchTerm}
-                    onChange={(e) => setFilters({...filters, searchTerm: e.target.value})}
-                  />
-                </Col>
-                <Col md={3}>
-                  <Form.Select
-                    value={filters.role}
-                    onChange={(e) => setFilters({...filters, role: e.target.value})}
-                  >
-                    <option value="all">All Roles</option>
-                    <option value="Doctor">Doctor</option>
-                    <option value="Nurse">Nurse</option>
-                    <option value="Technician">Technician</option>
-                    <option value="Receptionist">Receptionist</option>
-                  </Form.Select>
-                </Col>
-                <Col md={3}>
-                  <Form.Select
-                    value={filters.department}
-                    onChange={(e) => setFilters({...filters, department: e.target.value})}
-                  >
-                    <option value="all">All Departments</option>
-                    <option value="ICU">ICU</option>
-                    <option value="ER">Emergency</option>
-                    <option value="General Ward">General Ward</option>
-                    <option value="Lab">Laboratory</option>
-                    <option value="Admin">Administration</option>
-                  </Form.Select>
-                </Col>
-              </Row>
-
-              {/* Staff Table */}
-              {loading ? (
-                <div className="text-center py-5">
-                  <Spinner animation="border" />
-                  <p className="mt-2">Loading staff data...</p>
-                </div>
-              ) : (
-                <Table striped bordered hover responsive>
-                  <thead>
-                    <tr>
-                      <th>ID</th>
-                      <th>Name</th>
-                      <th>Role</th>
-                      <th>Department</th>
-                      <th>Experience</th>
-                      <th>Status</th>
-                      <th>Absence Risk</th>
-                      <th>Burnout Risk</th>
-                      <th>Cluster</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredStaff.length === 0 ? (
-                      <tr>
-                        <td colSpan="10" className="text-center">No staff found</td>
-                      </tr>
-                    ) : (
-                      filteredStaff.map(s => (
-                        <tr key={s._id}>
-                          <td>{s.staffId}</td>
-                          <td>{s.name}</td>
-                          <td>{s.role}</td>
-                          <td>{s.department}</td>
-                          <td>{s.experienceYears}y</td>
-                          <td>
-                            <Badge bg={
-                              s.currentStatus === 'On-Duty' ? 'success' :
-                              s.currentStatus === 'Off-Duty' ? 'secondary' :
-                              s.currentStatus === 'On-Leave' ? 'info' : 'danger'
-                            }>
-                              {s.currentStatus}
-                            </Badge>
-                          </td>
-                          <td>
-                            {getRiskBadge(
-                              s.absenteeismRisk?.riskLevel, 
-                              s.absenteeismRisk?.probability
-                            )}
-                          </td>
-                          <td>
-                            <Badge bg={
-                              s.burnoutRisk?.level === 'Low' ? 'success' :
-                              s.burnoutRisk?.level === 'Medium' ? 'warning' : 'danger'
-                            }>
-                              {s.burnoutRisk?.level || 'N/A'}
-                            </Badge>
-                          </td>
-                          <td>
-                            <Badge bg="info">
-                              {s.cluster?.label || 'Unassigned'}
-                            </Badge>
-                          </td>
-                          <td>
-                            <Button 
-                              size="sm" 
-                              variant="outline-primary"
-                              onClick={() => setSelectedStaff(s)}
-                            >
-                              View
-                            </Button>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </Table>
-              )}
-            </Card.Body>
-          </Card>
-        </Col>
-
-        {/* Right Sidebar - Quick Actions & Charts */}
-        <Col md={3}>
-          <Card className="mb-3">
-            <Card.Header>
-              <h6><FaCog className="me-2" />Quick Actions</h6>
-            </Card.Header>
-            <Card.Body>
-              <div className="d-grid gap-2">
-                <Button variant="primary" onClick={() => setShowAddModal(true)}>
-                  <FaUserPlus className="me-2" />Add New Staff
-                </Button>
-                <Button variant="success" onClick={runMLPredictions} disabled={mlLoading}>
-                  <FaBrain className="me-2" />Run Predictions
-                </Button>
-                <Button variant="info">
-                  <FaChartBar className="me-2" />Generate Roster
-                </Button>
-                <Button variant="secondary">
-                  <FaChartBar className="me-2" />View Analytics
-                </Button>
-                <Button variant="outline-secondary">
-                  <FaCog className="me-2" />ML Settings
-                </Button>
-              </div>
-            </Card.Body>
-          </Card>
-
-          <Card>
-            <Card.Header>
-              <h6>ML Model Status</h6>
-            </Card.Header>
-            <Card.Body>
-              <div className="mb-2">
-                <small className="text-muted">Absenteeism Model</small>
-                <div className="d-flex justify-content-between">
-                  <span>Random Forest</span>
-                  <Badge bg="success">Active</Badge>
-                </div>
-              </div>
-              <div className="mb-2">
-                <small className="text-muted">Staffing Predictor</small>
-                <div className="d-flex justify-content-between">
-                  <span>RF Regressor</span>
-                  <Badge bg="success">Active</Badge>
-                </div>
-              </div>
-              <div className="mb-2">
-                <small className="text-muted">Clustering</small>
-                <div className="d-flex justify-content-between">
-                  <span>K-Means (k=5)</span>
-                  <Badge bg="success">Active</Badge>
-                </div>
-              </div>
-              <div>
-                <small className="text-muted">Burnout Predictor</small>
-                <div className="d-flex justify-content-between">
-                  <span>Random Forest</span>
-                  <Badge bg="success">Active</Badge>
-                </div>
-              </div>
-              <hr />
-              <small className="text-muted">
-                Last Updated: {new Date().toLocaleDateString()}
-              </small>
-            </Card.Body>
-          </Card>
-        </Col>
-      </Row>
-    </Container>
+      {/* Add Nurse Dialog */}
+      <Dialog open={addOpen} onClose={() => setAddOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Add New Nurse</DialogTitle>
+        <DialogContent>
+          <Grid container spacing={2} sx={{ mt: 1 }}>
+            {[['First Name', 'firstName'], ['Last Name', 'lastName'], ['Email', 'email'], ['Phone', 'phone'], ['Specialization', 'specialization']].map(([label, key]) => (
+              <Grid item xs={12} sm={6} key={key}>
+                <TextField fullWidth label={label} value={newNurse[key]}
+                  onChange={e => setNewNurse({ ...newNurse, [key]: e.target.value })} />
+              </Grid>
+            ))}
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth>
+                <InputLabel>Ward</InputLabel>
+                <Select value={newNurse.ward} label="Ward" onChange={e => setNewNurse({ ...newNurse, ward: e.target.value })}>
+                  {WARDS.map(w => <MenuItem key={w} value={w}>{w}</MenuItem>)}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth>
+                <InputLabel>Shift</InputLabel>
+                <Select value={newNurse.shift} label="Shift" onChange={e => setNewNurse({ ...newNurse, shift: e.target.value })}>
+                  {SHIFTS.map(s => <MenuItem key={s} value={s}>{s}</MenuItem>)}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField fullWidth label="Experience (years)" type="number" value={newNurse.experience}
+                onChange={e => setNewNurse({ ...newNurse, experience: Number(e.target.value) })} />
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setAddOpen(false)}>Cancel</Button>
+          <Button onClick={handleAdd} variant="contained" disabled={actionLoading || !newNurse.firstName || !newNurse.email}>
+            {actionLoading ? <CircularProgress size={18} /> : 'Add Nurse'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
   );
-};
+}
+
+// ─── Attendance Tab ──────────────────────────────────────────────────────────
+function AttendanceTab() {
+  const [records, setRecords] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState(null);
+  const [stats, setStats] = useState(null);
+
+  const fetchData = useCallback(async () => {
+    setLoading(true); setErr(null);
+    try {
+      const [attRes, statsRes] = await Promise.all([
+        attendanceAPI.getAll({ limit: 20 }),
+        attendanceAPI.getStats(),
+      ]);
+      setRecords(attRes.data.attendances || []);
+      setStats(statsRes.data);
+    } catch (e) {
+      setErr('Failed to load attendance records.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  const fmtTime = (t) => t ? new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—';
+  const fmtDate = (d) => d ? new Date(d).toLocaleDateString() : '—';
+
+  return (
+    <Box>
+      {err && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setErr(null)}>{err}</Alert>}
+
+      {stats && (
+        <Grid container spacing={2} sx={{ mb: 3 }}>
+          {(stats.stats || []).map(s => (
+            <Grid item xs={6} md={3} key={s._id}>
+              <Card sx={{ textAlign: 'center', p: 2 }}>
+                <Typography variant="h5" sx={{ fontWeight: 700 }}>{s.count}</Typography>
+                <Typography variant="caption" color="text.secondary">{s._id}</Typography>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+      )}
+
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+        <Button variant="outlined" startIcon={<RefreshIcon />} onClick={fetchData}>Refresh</Button>
+      </Box>
+
+      {loading ? (
+        <Box sx={{ py: 6, textAlign: 'center' }}><CircularProgress /></Box>
+      ) : (
+        <TableContainer>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell sx={{ fontWeight: 600 }}>Staff</TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>Date</TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>Shift</TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>Clock In</TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>Clock Out</TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>Hours</TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {records.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} align="center" sx={{ py: 4, color: 'text.secondary' }}>
+                    No attendance records found.
+                  </TableCell>
+                </TableRow>
+              ) : records.map(r => (
+                <TableRow key={r._id}>
+                  <TableCell>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      {r.staff?.name || r.staff?.email || 'N/A'}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>{fmtDate(r.date)}</TableCell>
+                  <TableCell>{r.shift || '—'}</TableCell>
+                  <TableCell>{fmtTime(r.clockIn?.time)}</TableCell>
+                  <TableCell>{fmtTime(r.clockOut?.time)}</TableCell>
+                  <TableCell>{r.totalHours ? `${r.totalHours.toFixed(1)}h` : '—'}</TableCell>
+                  <TableCell>
+                    <Chip
+                      label={r.status || 'Present'}
+                      color={r.status === 'Absent' ? 'error' : r.status === 'Late' ? 'warning' : 'success'}
+                      size="small"
+                    />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
+    </Box>
+  );
+}
+
+// ─── Doctors Summary Tab ─────────────────────────────────────────────────────
+function DoctorsSummaryTab() {
+  const [doctors, setDoctors] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState(null);
+  const [search, setSearch] = useState('');
+
+  const fetchDoctors = useCallback(async () => {
+    setLoading(true); setErr(null);
+    try {
+      const res = await doctorsAPI.getAll(search ? { search } : {});
+      setDoctors(res.data.doctors || res.data || []);
+    } catch (e) { setErr('Failed to load doctors.'); }
+    finally { setLoading(false); }
+  }, [search]);
+
+  useEffect(() => { fetchDoctors(); }, [fetchDoctors]);
+
+  return (
+    <Box>
+      {err && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setErr(null)}>{err}</Alert>}
+      <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+        <TextField
+          placeholder="Search doctors..."
+          size="small"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          sx={{ flexGrow: 1 }}
+          InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }}
+        />
+        <Button variant="outlined" startIcon={<RefreshIcon />} onClick={fetchDoctors}>Refresh</Button>
+      </Box>
+      {loading ? (
+        <Box sx={{ py: 6, textAlign: 'center' }}><CircularProgress /></Box>
+      ) : (
+        <Grid container spacing={2}>
+          {doctors.map(d => (
+            <Grid item xs={12} sm={6} md={4} key={d._id}>
+              <Card variant="outlined">
+                <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <Avatar sx={{ bgcolor: '#dc2626', width: 48, height: 48 }}>
+                    {d.firstName?.[0]}{d.lastName?.[0]}
+                  </Avatar>
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 700 }} noWrap>
+                      Dr. {d.firstName} {d.lastName}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" noWrap>{d.specialization}</Typography>
+                    <Box sx={{ display: 'flex', gap: 0.5, mt: 1, flexWrap: 'wrap' }}>
+                      <Chip
+                        label={d.status}
+                        color={d.status === 'Active' ? 'success' : d.status === 'On Leave' ? 'warning' : 'error'}
+                        size="small"
+                      />
+                      {d.mlAccess && <Chip label="ML" color="info" size="small" />}
+                      {d.chatAccess && <Chip label="Chat" color="secondary" size="small" />}
+                    </Box>
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+          ))}
+          {doctors.length === 0 && (
+            <Grid item xs={12}>
+              <Typography sx={{ py: 4, textAlign: 'center', color: 'text.secondary' }}>No doctors found.</Typography>
+            </Grid>
+          )}
+        </Grid>
+      )}
+    </Box>
+  );
+}
+
+// ─── Main StaffManagement Component ────────────────────────────────────────
+function StaffManagement() {
+  const [tab, setTab] = useState(0);
+
+  return (
+    <Box>
+      <Box sx={{ mb: 4 }}>
+        <Typography variant="h4" sx={{ fontWeight: 700, color: '#dc2626', mb: 1, textTransform: 'uppercase', letterSpacing: '1px' }}>
+          Staff Management
+        </Typography>
+        <Typography variant="body1" color="text.secondary">
+          Unified management for doctors, nurses, and attendance — with injury-aware smart assignment
+        </Typography>
+      </Box>
+
+      <Card>
+        <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+          <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ px: 3 }}>
+            <Tab icon={<DoctorIcon />} iconPosition="start" label="Doctors" />
+            <Tab icon={<NurseIcon />} iconPosition="start" label="Nurses & Triage" />
+            <Tab icon={<AttendanceIcon />} iconPosition="start" label="Attendance" />
+          </Tabs>
+        </Box>
+        <Box sx={{ p: 3 }}>
+          {tab === 0 && <DoctorsSummaryTab />}
+          {tab === 1 && <NursesTab />}
+          {tab === 2 && <AttendanceTab />}
+        </Box>
+      </Card>
+    </Box>
+  );
+}
 
 export default StaffManagement;

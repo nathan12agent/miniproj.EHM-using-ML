@@ -155,6 +155,7 @@ export const nursesAPI = {
   delete: (id) => api.delete(`/nurses/${id}`),
   assignPatient: (id, patientId) => api.post(`/nurses/${id}/assign-patient`, { patientId }),
   removePatient: (id, patientId) => api.post(`/nurses/${id}/remove-patient`, { patientId }),
+  smartAssign: (data) => api.post('/nurses/smart-assign', data),
 };
 
 export default api;

@@ -98,10 +98,28 @@ router.get('/', auth, async (req, res) => {
       .skip(skip)
       .limit(limit);
 
+    // Compute active bed assignments
+    const Bed = require('../models/Bed');
+    const allBeds = await Bed.find({ status: 'Occupied' });
+    const bedMap = {};
+    allBeds.forEach(bed => {
+      if (bed.patient) {
+         bedMap[bed.patient.toString()] = { bedNumber: bed.bedNumber, ward: bed.ward };
+      }
+    });
+
+    const patientsWithBeds = patients.map(p => {
+      const obj = p.toObject();
+      if (bedMap[p._id.toString()]) {
+         obj.assignedBed = bedMap[p._id.toString()];
+      }
+      return obj;
+    });
+
     const total = await Patient.countDocuments(query);
 
     res.json({
-      patients,
+      patients: patientsWithBeds,
       pagination: {
         current: page,
         pages: Math.ceil(total / limit),
@@ -169,12 +187,21 @@ router.post('/', auth, validatePatient, async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      return res.status(400).json({ message: errors.array()[0].msg, errors: errors.array() });
     }
 
+    const { CONDITION_SPECIALTY_MAP } = require('../utils/medicalTriage');
+    const triage = CONDITION_SPECIALTY_MAP[req.body.condition || 'Other'];
+
+    const cleanBody = { ...req.body };
+    Object.keys(cleanBody).forEach(key => {
+      if (cleanBody[key] === '') delete cleanBody[key];
+    });
+
     const patient = new Patient({
-      ...req.body,
-      createdBy: req.user.id
+      ...cleanBody,
+      createdBy: req.user.id,
+      injurySeverity: triage?.severity || 'Minor'
     });
 
     await patient.save();
@@ -206,11 +233,11 @@ router.post('/', auth, validatePatient, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error(error);
+    console.error("PATIENT CREATE ERROR:", error);
     if (error.code === 11000) {
-      return res.status(400).json({ message: 'Patient with this email already exists' });
+      return res.status(400).json({ message: 'Duplicate field error: ' + JSON.stringify(error.keyValue) });
     }
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: error.message || 'Server error' });
   }
 });
 
@@ -242,12 +269,20 @@ router.put('/:id', auth, validatePatient, async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      return res.status(400).json({ message: errors.array()[0].msg, errors: errors.array() });
     }
+
+    const { CONDITION_SPECIALTY_MAP } = require('../utils/medicalTriage');
+    const triage = CONDITION_SPECIALTY_MAP[req.body.condition || 'Other'];
+
+    const cleanBody = { ...req.body };
+    Object.keys(cleanBody).forEach(key => {
+      if (cleanBody[key] === '') delete cleanBody[key];
+    });
 
     const patient = await Patient.findByIdAndUpdate(
       req.params.id,
-      { ...req.body, updatedBy: req.user.id },
+      { ...cleanBody, updatedBy: req.user.id, injurySeverity: triage?.severity || 'Minor' },
       { new: true, runValidators: true }
     );
 
@@ -379,6 +414,7 @@ router.post('/:id/assign-doctor', auth, async (req, res) => {
 
 /**
  * Auto-assign doctor, nurse, and bed using ML service
+ * Also updates injurySeverity from CONDITION_SPECIALTY_MAP for triage alignment
  */
 router.post('/:id/auto-assign', auth, async (req, res) => {
   try {
@@ -395,6 +431,13 @@ router.post('/:id/auto-assign', auth, async (req, res) => {
 
     console.log('Patient found:', patient.firstName, patient.lastName);
 
+    // Sync injurySeverity from condition triage map
+    const { CONDITION_SPECIALTY_MAP } = require('../utils/medicalTriage');
+    const triage = CONDITION_SPECIALTY_MAP[patient.condition || 'Other'];
+    if (triage && patient.injurySeverity !== triage.severity) {
+      patient.injurySeverity = triage.severity;
+    }
+
     // Import models
     const Doctor = require('../models/Doctor');
     const Nurse = require('../models/Nurse');
@@ -404,9 +447,9 @@ router.post('/:id/auto-assign', auth, async (req, res) => {
     const mlServiceUrl = process.env.ML_SERVICE_URL || 'http://localhost:5001';
     
     let predictedDisease = req.body.disease || 'Unknown';
-    let specialistType = 'General Practitioner';
+    let specialistType = triage?.specialty || 'General Practitioner';
     let department = 'General';
-    let urgencyLevel = 'medium';
+    let urgencyLevel = triage?.severity?.toLowerCase() || 'medium';
     let confidence = 0.5;
 
     try {
@@ -435,26 +478,33 @@ router.post('/:id/auto-assign', auth, async (req, res) => {
       }
     } catch (mlError) {
       console.log('ML service error (continuing with defaults):', mlError.message);
-      // Continue with default values
     }
 
     // Find and assign doctor based on specialist type
     console.log('Finding doctor with specialization:', specialistType);
     let assignedDoctor = null;
     
-    // Try exact match first
     let doctors = await Doctor.find({
       specialization: { $regex: new RegExp(specialistType, 'i') },
       status: 'Active'
     }).sort({ patientsAttended: 1 }).limit(5);
     
-    console.log(`Found ${doctors.length} doctors with specialization matching "${specialistType}"`);
-    
     if (doctors.length === 0) {
-      // Try broader search
-      console.log('No exact match, trying broader search...');
+      // Try triage fallbacks
+      if (triage?.fallbacks) {
+        for (const fallback of triage.fallbacks) {
+          doctors = await Doctor.find({ status: 'Active', specialization: fallback });
+          if (doctors.length > 0) break;
+        }
+      }
+    }
+
+    if (doctors.length === 0) {
+      doctors = await Doctor.find({ status: 'Active', specialization: 'General Medicine' });
+    }
+
+    if (doctors.length === 0) {
       doctors = await Doctor.find({ status: 'Active' }).sort({ patientsAttended: 1 }).limit(5);
-      console.log(`Found ${doctors.length} doctors (any specialization)`);
     }
     
     if (doctors.length > 0) {
@@ -480,73 +530,56 @@ router.post('/:id/auto-assign', auth, async (req, res) => {
       'General': 'General'
     };
     
-    const targetWard = wardMapping[department] || 'General';
+    const targetWard = wardMapping[department] || (
+      patient.injurySeverity === 'Severe' || patient.injurySeverity === 'Critical' ? 'ICU' : 'General'
+    );
     console.log('Target ward:', targetWard);
     
     let assignedNurse = null;
-    let nurses = await Nurse.find({
-      ward: targetWard,
-      status: 'On Duty'
-    }).limit(5);
-    
-    console.log(`Found ${nurses.length} nurses in ${targetWard} ward`);
+    let nurses = await Nurse.find({ ward: targetWard, status: 'On Duty' }).limit(5);
     
     if (nurses.length === 0) {
-      // Try any ward
-      console.log('No nurses in target ward, trying any ward...');
       nurses = await Nurse.find({ status: 'On Duty' }).limit(5);
-      console.log(`Found ${nurses.length} nurses (any ward)`);
     }
     
     if (nurses.length > 0) {
-      // Pick nurse with least patients
       assignedNurse = nurses[0];
       console.log('Assigned nurse:', assignedNurse.firstName, assignedNurse.lastName, '-', assignedNurse.ward);
     } else {
       console.log('WARNING: No nurses found in database!');
     }
     
-    // Find available bed in the assigned ward
-    console.log('Finding available bed in ward:', targetWard);
+    // Find available bed — skip for Minor injuries (outpatient)
     let assignedBed = null;
-    let availableBeds = await Bed.find({
-      status: 'Available',
-      ward: targetWard
-    }).limit(1);
-    
-    console.log(`Found ${availableBeds.length} available beds in ${targetWard} ward`);
-    
-    if (availableBeds.length === 0) {
-      // Try any ward
-      console.log('No beds in target ward, trying any ward...');
-      availableBeds = await Bed.find({ status: 'Available' }).limit(1);
-      console.log(`Found ${availableBeds.length} available beds (any ward)`);
-    }
-    
-    if (availableBeds.length > 0) {
-      assignedBed = availableBeds[0];
-      console.log('Assigned bed:', assignedBed.bedNumber, '-', assignedBed.ward);
+    if (patient.injurySeverity !== 'Minor') {
+      let availableBeds = await Bed.find({ status: 'Available', ward: targetWard }).limit(1);
+      if (availableBeds.length === 0) {
+        availableBeds = await Bed.find({ status: 'Available' }).limit(1);
+      }
       
-      // Update bed status
-      assignedBed.status = 'Occupied';
-      assignedBed.patient = patient._id;
-      assignedBed.assignedDate = new Date();
-      await assignedBed.save();
-      console.log('Bed status updated to Occupied');
+      if (availableBeds.length > 0) {
+        assignedBed = availableBeds[0];
+        console.log('Assigned bed:', assignedBed.bedNumber, '-', assignedBed.ward);
+        assignedBed.status = 'Occupied';
+        assignedBed.patient = patient._id;
+        assignedBed.assignedDate = new Date();
+        await assignedBed.save();
+      } else {
+        console.log('WARNING: No available beds found in database!');
+      }
     } else {
-      console.log('WARNING: No available beds found in database!');
+      console.log('Minor injury — outpatient care, no bed assigned');
     }
     
     // Update patient with assignments
-    console.log('Updating patient record...');
     patient.assignedDoctor = assignedDoctor ? assignedDoctor._id : null;
     patient.autoAssignment = {
       isAutoAssigned: true,
-      predictedDisease: predictedDisease,
+      predictedDisease,
       diseaseConfidence: confidence,
       assignedDepartment: department,
       assignedSpecialistType: specialistType,
-      urgencyLevel: urgencyLevel,
+      urgencyLevel,
       assignedDoctor: assignedDoctor ? assignedDoctor._id : null,
       assignedNurse: assignedNurse ? assignedNurse._id : null,
       assignedBed: assignedBed ? assignedBed._id : null,
@@ -557,22 +590,16 @@ router.post('/:id/auto-assign', auth, async (req, res) => {
     };
     
     await patient.save();
-    console.log('Patient record updated');
     
     // Assign patient to nurse
     if (assignedNurse && patient._id) {
-      console.log('Adding patient to nurse assignment list...');
-      if (!assignedNurse.assignedPatients) {
-        assignedNurse.assignedPatients = [];
-      }
+      if (!assignedNurse.assignedPatients) assignedNurse.assignedPatients = [];
       if (!assignedNurse.assignedPatients.includes(patient._id)) {
         assignedNurse.assignedPatients.push(patient._id);
         await assignedNurse.save();
-        console.log('Nurse assignment list updated');
       }
     }
     
-    // Populate the response
     if (assignedDoctor) {
       await patient.populate('assignedDoctor', 'firstName lastName specialization');
     }
@@ -602,7 +629,7 @@ router.post('/:id/auto-assign', auth, async (req, res) => {
           ward: assignedBed.ward
         } : null,
         disease: predictedDisease,
-        department: department,
+        department,
         urgency: urgencyLevel
       }
     });

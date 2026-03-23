@@ -2,7 +2,94 @@ const express = require('express');
 const router = express.Router();
 const { body, validationResult } = require('express-validator');
 const Nurse = require('../models/Nurse');
+const Patient = require('../models/Patient');
 const auth = require('../middleware/auth');
+
+/**
+ * POST /api/nurses/smart-assign
+ *
+ * Injury-severity-aware staff assignment:
+ *   - Minor   → outpatient only: assign nurse, NO bed required
+ *   - Moderate / Severe / Critical → assign nurse AND flag bed required
+ *
+ * Body: { patientId, injurySeverity, ward }
+ */
+router.post('/smart-assign', auth, [
+  body('patientId').notEmpty().withMessage('patientId is required'),
+  body('injurySeverity')
+    .isIn(['Minor', 'Moderate', 'Severe', 'Critical'])
+    .withMessage('injurySeverity must be Minor, Moderate, Severe, or Critical'),
+  body('ward')
+    .isIn(['ICU', 'General', 'Emergency', 'Pediatric', 'Maternity'])
+    .withMessage('ward must be one of: ICU, General, Emergency, Pediatric, Maternity')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { patientId, injurySeverity, ward } = req.body;
+
+    // Validate patient exists
+    const patient = await Patient.findById(patientId);
+    if (!patient) {
+      return res.status(404).json({ message: 'Patient not found' });
+    }
+
+    // Determine whether a bed is needed based on injury severity
+    const bedRequired = ['Moderate', 'Severe', 'Critical'].includes(injurySeverity);
+
+    // For Minor injuries, any available nurse in the ward works (not just On Duty)
+    // For serious injuries, prioritise using the best available on-duty nurse
+    let assignedNurse = null;
+    if (!bedRequired) {
+      // Minor injury — assign lightest-loaded nurse, any status
+      const nurses = await Nurse.find({ ward })
+        .populate('assignedPatients');
+
+      const available = nurses
+        .filter(n => n.assignedPatients.length < n.maxPatientLoad)
+        .map(n => ({ nurse: n, score: n.getAvailabilityScore() }))
+        .sort((a, b) => b.score - a.score);
+
+      if (available.length > 0) {
+        assignedNurse = available[0].nurse;
+        await assignedNurse.assignPatient(patientId);
+      }
+    } else {
+      // Moderate/Severe/Critical — use on-duty nurse via existing smart logic
+      assignedNurse = await Nurse.findBestNurseForAssignment(ward);
+      if (assignedNurse) {
+        await assignedNurse.assignPatient(patientId);
+      }
+    }
+
+    // Update the patient's injurySeverity field to keep it in sync
+    await Patient.findByIdAndUpdate(patientId, { injurySeverity });
+
+    const populatedNurse = assignedNurse
+      ? await Nurse.findById(assignedNurse._id).populate('assignedPatients', 'firstName lastName patientId')
+      : null;
+
+    return res.json({
+      bedRequired,
+      injurySeverity,
+      message: bedRequired
+        ? `Patient requires a bed. Nurse assigned in ${ward} ward.`
+        : `Minor injury — outpatient care only. No bed required. Nurse assigned in ${ward} ward.`,
+      assignedNurse: populatedNurse,
+      wardInfo: {
+        ward,
+        bedAssignmentAdvised: bedRequired,
+        careType: bedRequired ? 'Inpatient' : 'Outpatient'
+      }
+    });
+  } catch (error) {
+    console.error('Smart-assign error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
 
 // Get all nurses with optional filtering
 router.get('/', auth, async (req, res) => {

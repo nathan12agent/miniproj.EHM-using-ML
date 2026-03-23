@@ -32,10 +32,46 @@ router.get('/', auth, async (req, res) => {
       .skip(skip)
       .limit(parseInt(limit));
 
+    const Patient = require('../models/Patient');
+    const Bed = require('../models/Bed');
+    
+    // Find all patients currently assigned to these doctors
+    const doctorIds = doctors.map(d => d._id);
+    const assignedPatients = await Patient.find({ assignedDoctor: { $in: doctorIds } });
+    
+    const patientIds = assignedPatients.map(p => p._id);
+    const occupiedBeds = await Bed.find({ patient: { $in: patientIds }, status: 'Occupied' });
+
+    const patientBedMap = {};
+    occupiedBeds.forEach(b => {
+      patientBedMap[b.patient.toString()] = { ward: b.ward, bedNumber: b.bedNumber };
+    });
+
+    const doctorAssignmentMap = {};
+    assignedPatients.forEach(p => {
+       const docId = p.assignedDoctor.toString();
+       if (!doctorAssignmentMap[docId]) {
+          doctorAssignmentMap[docId] = {
+             patientName: `${p.firstName} ${p.lastName}`,
+             bed: patientBedMap[p._id.toString()] || null
+          };
+       }
+    });
+
+    const doctorsWithStatus = doctors.map(doc => {
+      const assignment = doctorAssignmentMap[doc._id.toString()];
+      return { 
+        ...doc.toObject(), 
+        availabilityStatus: assignment ? 'Occupied' : 'Available',
+        isOccupied: !!assignment,
+        currentAssignment: assignment || null
+      };
+    });
+
     const total = await Doctor.countDocuments(query);
 
     res.json({
-      doctors,
+      doctors: doctorsWithStatus,
       pagination: {
         current: parseInt(page),
         pages: Math.ceil(total / limit),
@@ -77,21 +113,19 @@ router.get('/:id', auth, async (req, res) => {
  *     summary: Create new doctor
  *     tags: [Doctors]
  */
-router.post('/', auth, [
-  body('firstName').trim().isLength({ min: 2 }),
-  body('lastName').trim().isLength({ min: 2 }),
-  body('specialization').notEmpty(),
-  body('phone').isMobilePhone(),
-  body('email').isEmail()
-], async (req, res) => {
+router.post('/', auth, async (req, res) => {
   try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
+
+    // Remove empty strings so Mongoose doesn't fail on optional Enums or Date formats
+    const cleanBody = { ...req.body };
+    Object.keys(cleanBody).forEach(key => {
+      if (cleanBody[key] === '') {
+        delete cleanBody[key];
+      }
+    });
 
     const doctor = new Doctor({
-      ...req.body,
+      ...cleanBody,
       createdBy: req.user.id
     });
 
@@ -102,11 +136,11 @@ router.post('/', auth, [
       doctor
     });
   } catch (error) {
-    console.error(error);
+    console.error("DOCTOR CREATE ERROR:", error);
     if (error.code === 11000) {
-      return res.status(400).json({ message: 'Doctor with this email already exists' });
+      return res.status(400).json({ message: 'Duplicate field error: ' + JSON.stringify(error.keyValue) });
     }
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: error.message || 'Server error' });
   }
 });
 
