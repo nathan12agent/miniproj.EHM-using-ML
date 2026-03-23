@@ -187,6 +187,20 @@ const BedManagementWidget = () => {
     }
   };
 
+  const handleAutoAssign = async (patientId) => {
+    try {
+      setLoading(true);
+      const response = await patientsAPI.autoAssign(patientId);
+      toast.success(response.data.message || 'Auto assign successful');
+      await fetchAllData();
+    } catch (error) {
+      console.error('Error in auto assign:', error);
+      toast.error(error.response?.data?.message || 'Failed to auto assign');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleAddBed = async () => {
     // Validate bed number
     if (!newBed.bedNumber.trim()) {
@@ -414,7 +428,7 @@ const BedManagementWidget = () => {
     };
   };
 
-  // Get patients without beds
+  // Get patients without beds (including Minor, so we can Auto Assign them)
   const getPatientsWithoutBeds = () => {
     const assignedPatientIds = beds
       .filter(b => b.patient)
@@ -621,6 +635,56 @@ const BedManagementWidget = () => {
     );
   };
 
+  const DoctorCard = ({ doctor }) => {
+    return (
+      <Card 
+        sx={{ 
+          mb: 2,
+          borderLeft: `4px solid ${doctor.isOccupied ? '#ef4444' : '#10b981'}`,
+          backgroundColor: doctor.isOccupied ? 'rgba(239, 68, 68, 0.03)' : 'rgba(16, 185, 129, 0.03)',
+        }}
+      >
+        <CardContent sx={{ p: '12px !important' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Box
+                sx={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: '50%',
+                  backgroundColor: doctor.isOccupied ? '#ef4444' : '#10b981',
+                  color: 'white',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontWeight: 'bold',
+                  fontSize: '0.8rem'
+                }}
+              >
+                {doctor.firstName[0]}{doctor.lastName[0]}
+              </Box>
+              <Box>
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                  Dr. {doctor.firstName} {doctor.lastName}
+                </Typography>
+                <Typography variant="caption" color="text.secondary" display="block">
+                  {doctor.specialization}
+                </Typography>
+              </Box>
+            </Box>
+            <Chip 
+              label={doctor.availabilityStatus} 
+              size="small"
+              color={doctor.isOccupied ? 'error' : 'success'}
+              variant="outlined"
+              sx={{ fontWeight: 'bold' }}
+            />
+          </Box>
+        </CardContent>
+      </Card>
+    );
+  };
+
   const currentWard = ['All', 'ICU', 'General', 'Emergency'][tabValue];
   const bedStats = getBedStats(currentWard);
   const nurseStats = getNurseStats(currentWard);
@@ -787,10 +851,13 @@ const BedManagementWidget = () => {
         </Grid>
       </Grid>
 
-      {/* Patients Without Beds Section */}
+      {/* Lower Dashboard Section */}
       <Box sx={{ mt: 4 }}>
-        <Card>
-          <CardContent>
+        <Grid container spacing={3}>
+          {/* Patients Without Beds */}
+          <Grid item xs={12} md={8}>
+            <Card sx={{ height: '100%' }}>
+              <CardContent>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
               <Typography variant="h6" sx={{ fontWeight: 600, color: '#dc2626' }}>
                 Patients Without Beds
@@ -849,12 +916,20 @@ const BedManagementWidget = () => {
                             </Typography>
                           </Box>
                         </Box>
-                        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 1.5 }}>
                           <Chip 
                             label={patient.gender} 
                             size="small" 
                             sx={{ fontSize: '0.7rem' }}
                           />
+                          {patient.condition && (
+                            <Chip 
+                              label={patient.condition} 
+                              size="small" 
+                              color="info"
+                              sx={{ fontSize: '0.7rem', fontWeight: 600 }}
+                            />
+                          )}
                           <Chip 
                             label="No Bed" 
                             size="small" 
@@ -862,6 +937,19 @@ const BedManagementWidget = () => {
                             sx={{ fontSize: '0.7rem', fontWeight: 600 }}
                           />
                         </Box>
+                        <Button
+                          variant="contained"
+                          color="primary"
+                          size="small"
+                          fullWidth
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAutoAssign(patient._id);
+                          }}
+                          disabled={loading}
+                        >
+                          Auto Assign
+                        </Button>
                       </CardContent>
                     </Card>
                   </Grid>
@@ -870,6 +958,28 @@ const BedManagementWidget = () => {
             )}
           </CardContent>
         </Card>
+          </Grid>
+
+          {/* Doctors Availability */}
+          <Grid item xs={12} md={4}>
+            <Card sx={{ height: '100%' }}>
+              <CardContent>
+                <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: '#10b981' }}>
+                  Doctors Availability
+                </Typography>
+                <Box sx={{ maxHeight: 600, overflowY: 'auto' }}>
+                  {doctors.length === 0 ? (
+                    <Typography variant="body2" color="text.secondary">No doctors found.</Typography>
+                  ) : (
+                    doctors.map((doc) => (
+                      <DoctorCard key={doc._id} doctor={doc} />
+                    ))
+                  )}
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
       </Box>
 
       {/* Bed Details Dialog */}
@@ -924,6 +1034,14 @@ const BedManagementWidget = () => {
                       </Typography>
                       <Typography variant="body2">
                         {selectedBed.patient.gender}
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={6}>
+                      <Typography variant="caption" color="text.secondary">
+                        Condition
+                      </Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 600, color: 'info.main' }}>
+                        {selectedBed.patient.condition || 'Other'}
                       </Typography>
                     </Grid>
                     <Grid item xs={6}>

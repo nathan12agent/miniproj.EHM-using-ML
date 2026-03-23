@@ -19,7 +19,11 @@ router.get('/', auth, async (req, res) => {
     }
 
     const beds = await Bed.find(query)
-      .populate('patient', 'firstName lastName patientId dateOfBirth gender')
+      .populate({
+        path: 'patient',
+        select: 'firstName lastName patientId dateOfBirth gender phone condition assignedDoctor',
+        populate: { path: 'assignedDoctor', select: 'firstName lastName specialization' }
+      })
       .sort({ bedNumber: 1 });
 
     res.json({ beds });
@@ -63,7 +67,11 @@ router.get('/stats', auth, async (req, res) => {
 router.get('/:id', auth, async (req, res) => {
   try {
     const bed = await Bed.findById(req.params.id)
-      .populate('patient', 'firstName lastName patientId dateOfBirth gender phone');
+      .populate({
+        path: 'patient',
+        select: 'firstName lastName patientId dateOfBirth gender phone condition assignedDoctor',
+        populate: { path: 'assignedDoctor', select: 'firstName lastName specialization' }
+      });
     
     if (!bed) {
       return res.status(404).json({ message: 'Bed not found' });
@@ -134,11 +142,20 @@ router.post('/:id/assign', auth, [
     if (!patient) {
       return res.status(404).json({ message: 'Patient not found' });
     }
+    
+    // Smart bed assignment check - do not assign beds for minor injuries
+    if (patient.injurySeverity === 'Minor') {
+      return res.status(400).json({ message: 'Patient has a minor injury and does not require a bed (outpatient care only).' });
+    }
 
     await bed.assignToPatient(req.body.patientId, req.user.id);
 
     const updatedBed = await Bed.findById(bed._id)
-      .populate('patient', 'firstName lastName patientId');
+      .populate({
+        path: 'patient',
+        select: 'firstName lastName patientId dateOfBirth gender phone condition assignedDoctor',
+        populate: { path: 'assignedDoctor', select: 'firstName lastName specialization' }
+      });
 
     res.json({
       message: 'Bed assigned successfully',

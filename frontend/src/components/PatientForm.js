@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -25,6 +25,7 @@ const PatientForm = ({ open, onClose, onSuccess, patient = null }) => {
     phone: patient?.phone || '',
     email: patient?.email || '',
     bloodGroup: patient?.bloodGroup || '',
+    condition: patient?.condition || 'Other',
     address: {
       street: patient?.address?.street || '',
       city: patient?.address?.city || '',
@@ -41,6 +42,56 @@ const PatientForm = ({ open, onClose, onSuccess, patient = null }) => {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (patient) {
+      setFormData({
+        firstName: patient.firstName || '',
+        lastName: patient.lastName || '',
+        dateOfBirth: patient.dateOfBirth?.split('T')[0] || '',
+        gender: patient.gender || '',
+        phone: patient.phone || '',
+        email: patient.email || '',
+        bloodGroup: patient.bloodGroup || '',
+        condition: patient.condition || 'Other',
+        address: {
+          street: patient.address?.street || '',
+          city: patient.address?.city || '',
+          state: patient.address?.state || '',
+          zipCode: patient.address?.zipCode || '',
+          country: patient.address?.country || 'USA',
+        },
+        emergencyContact: {
+          name: patient.emergencyContact?.name || '',
+          relationship: patient.emergencyContact?.relationship || '',
+          phone: patient.emergencyContact?.phone || '',
+        },
+      });
+    } else {
+      setFormData({
+        firstName: '',
+        lastName: '',
+        dateOfBirth: '',
+        gender: '',
+        phone: '',
+        email: '',
+        bloodGroup: '',
+        condition: 'Other',
+        address: {
+          street: '',
+          city: '',
+          state: '',
+          zipCode: '',
+          country: 'USA',
+        },
+        emergencyContact: {
+          name: '',
+          relationship: '',
+          phone: '',
+        },
+      });
+    }
+  }, [patient]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -171,6 +222,31 @@ const PatientForm = ({ open, onClose, onSuccess, patient = null }) => {
               >
                 {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map(bg => (
                   <MenuItem key={bg} value={bg}>{bg}</MenuItem>
+                ))}
+              </TextField>
+            </Grid>
+            <Grid item xs={12}>
+              <Box sx={{ mt: 2, mb: 1 }}>
+                <strong>Health Issue / Condition</strong>
+              </Box>
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                required
+                fullWidth
+                select
+                label="Primary Condition"
+                name="condition"
+                value={formData.condition}
+                onChange={handleChange}
+                helperText="This helps us automatically assign the correct specialized doctor"
+              >
+                {[
+                  'Cold/Flu', 'Fever', 'Minor Cut/Wound', 'Skin Rash', 'Eye Infection', 'Hearing Loss',
+                  'Stomach Pain', 'Acid Reflux', 'Migraine', 'Fracture', 'Arthritis', 'Asthma', 'Kidney Stones',
+                  'Heart Attack', 'Chest Pain', 'Stroke', 'Seizures', 'Cancer', 'Severe Trauma', 'Burns', 'Spinal Injury', 'Pneumonia', 'Other'
+                ].map(cond => (
+                  <MenuItem key={cond} value={cond}>{cond}</MenuItem>
                 ))}
               </TextField>
             </Grid>
