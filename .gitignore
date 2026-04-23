@@ -194,3 +194,42 @@ Thumbs.db
 # YOLO model files
 *.pt
 yolov8*.pt
+
+# ML model files (regeneratable — large binary files)
+*.keras
+*.h5
+*.pkl
+*.joblib
+*.model
+*.weights
+*.ckpt
+*.pb
+*.onnx
+*.tflite
+skin_disease_model/
+*.zip
+*.tar.gz
+*.tar
+
+# Large data/training files
+Training.csv
+Testing.csv
+
+# Log files
+backend-startup.log
+ml-startup.log
+ml-startup2.log
+git-*.log
+
+# Uploaded files
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# Extracted zip folders (local only)
+Changes-only/
+hospital-changes-complete/
+staff-management-changes/
+
+# Kiro IDE files (local dev only)
+.kiro/
+rzp-key.csv
