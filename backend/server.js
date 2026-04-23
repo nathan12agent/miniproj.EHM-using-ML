@@ -57,6 +57,8 @@ app.use('/api/insurance', require('./routes/insurance'));
 app.use('/api/payment', require('./routes/payment'));
 app.use('/api/chatbot', require('./routes/chatbot'));
 app.use('/api/admin/requests', require('./routes/adminRequests'));
+app.use('/api/patient-portal', require('./routes/patientBooking')); // Patient appointment booking
+app.use('/api/scheduling', require('./routes/scheduling'));         // Doctor-based scheduling
 
 // Swagger documentation
 const swaggerJsdoc = require('swagger-jsdoc');

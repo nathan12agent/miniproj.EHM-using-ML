@@ -144,7 +144,7 @@ function Dashboard() {
             fontSize: '2rem',
           }}
         >
-          {value.toLocaleString()}
+          {typeof value === 'number' ? value.toLocaleString() : value}
         </Typography>
         
         <Typography 
@@ -332,7 +332,7 @@ function Dashboard() {
               
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 {recentAppointments.map((appointment, index) => (
-                  <Box key={appointment.id} sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 2, backgroundColor: '#f9fafb', borderRadius: 2 }}>
+                  <Box key={appointment._id || index} sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 2, backgroundColor: '#f9fafb', borderRadius: 2 }}>
                     <Avatar
                       sx={{
                         width: 32,
@@ -342,21 +342,21 @@ function Dashboard() {
                         fontWeight: 600,
                       }}
                     >
-                      {appointment.patientName.split(' ').map(n => n[0]).join('')}
+                      {appointment.patient?.firstName?.[0] || '?'}{appointment.patient?.lastName?.[0] || ''}
                     </Avatar>
                     
                     <Box sx={{ flex: 1 }}>
                       <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.875rem' }}>
-                        {appointment.patientName}
+                        {appointment.patient ? `${appointment.patient.firstName} ${appointment.patient.lastName}` : 'Unknown Patient'}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
-                        {appointment.doctorName} • {appointment.time}
+                        {appointment.doctor ? `Dr. ${appointment.doctor.firstName} ${appointment.doctor.lastName}` : ''} • {appointment.appointmentTime || ''}
                       </Typography>
                     </Box>
                     
                     <Chip
                       label={appointment.status}
-                      color={getStatusColor(appointment.status)}
+                      color={getStatusColor(appointment.status?.toLowerCase())}
                       size="small"
                       sx={{ fontSize: '0.75rem' }}
                     />

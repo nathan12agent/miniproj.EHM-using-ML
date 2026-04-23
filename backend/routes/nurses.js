@@ -10,7 +10,7 @@ const auth = require('../middleware/auth');
  *
  * Injury-severity-aware staff assignment:
  *   - Minor   → outpatient only: assign nurse, NO bed required
- *   - Moderate / Severe / Critical → assign nurse AND flag bed required
+ *   - Moderate / Severe / Critical → assign nurse AND bed
  *
  * Body: { patientId, injurySeverity, ward }
  */
@@ -30,64 +30,146 @@ router.post('/smart-assign', auth, [
     }
 
     const { patientId, injurySeverity, ward } = req.body;
+    const Bed    = require('../models/Bed');
+    const Doctor = require('../models/Doctor');
+    const { CONDITION_SPECIALTY_MAP } = require('../utils/medicalTriage');
 
-    // Validate patient exists
-    const patient = await Patient.findById(patientId);
+    // ── Resolve patient by MongoDB _id OR patientId string ──────────────────
+    let patient = null;
+    if (/^[0-9a-fA-F]{24}$/.test(patientId)) {
+      patient = await Patient.findById(patientId);
+    }
     if (!patient) {
-      return res.status(404).json({ message: 'Patient not found' });
+      patient = await Patient.findOne({ patientId });
+    }
+    if (!patient) {
+      patient = await Patient.findOne({ firstName: { $regex: patientId, $options: 'i' } });
+    }
+    if (!patient) {
+      return res.status(404).json({
+        message: `Patient "${patientId}" not found. Use MongoDB _id or patientId like P00001001`
+      });
     }
 
-    // Determine whether a bed is needed based on injury severity
     const bedRequired = ['Moderate', 'Severe', 'Critical'].includes(injurySeverity);
+    const patientName = `${patient.firstName} ${patient.lastName}`;
 
-    // For Minor injuries, any available nurse in the ward works (not just On Duty)
-    // For serious injuries, prioritise using the best available on-duty nurse
-    let assignedNurse = null;
-    if (!bedRequired) {
-      // Minor injury — assign lightest-loaded nurse, any status
-      const nurses = await Nurse.find({ ward })
-        .populate('assignedPatients');
+    // ── Bed assignment ───────────────────────────────────────────────────────
+    let assignedBed = null;
+    if (bedRequired) {
+      const bedUpdate = {
+        status: 'Occupied',
+        occupantType: 'patient',
+        patient: patient._id,
+        assignedDate: new Date(),
+        allocatedTo: {
+          name: patientName,
+          role: 'Patient',
+          id: patient.patientId || patient._id.toString(),
+          department: ward,
+        },
+      };
 
-      const available = nurses
-        .filter(n => n.assignedPatients.length < n.maxPatientLoad)
-        .map(n => ({ nurse: n, score: n.getAvailabilityScore() }))
-        .sort((a, b) => b.score - a.score);
-
-      if (available.length > 0) {
-        assignedNurse = available[0].nurse;
-        await assignedNurse.assignPatient(patientId);
+      // Try exact ward first, then any available patient bed
+      assignedBed = await Bed.findOneAndUpdate(
+        { ward: { $regex: ward, $options: 'i' }, status: 'Available', bedPurpose: 'patient_bed' },
+        bedUpdate,
+        { new: true }
+      );
+      if (!assignedBed) {
+        assignedBed = await Bed.findOneAndUpdate(
+          { status: 'Available', bedPurpose: 'patient_bed' },
+          bedUpdate,
+          { new: true }
+        );
       }
-    } else {
-      // Moderate/Severe/Critical — use on-duty nurse via existing smart logic
-      assignedNurse = await Nurse.findBestNurseForAssignment(ward);
-      if (assignedNurse) {
-        await assignedNurse.assignPatient(patientId);
+
+      if (assignedBed) {
+        await Patient.findByIdAndUpdate(patient._id, {
+          ward: assignedBed.ward,
+          status: 'Active',
+        });
       }
     }
 
-    // Update the patient's injurySeverity field to keep it in sync
-    await Patient.findByIdAndUpdate(patientId, { injurySeverity });
+    // ── Nurse assignment — ward match with fallback to any available ─────────
+    let assignedNurse = null;
+    let nurses = await Nurse.find({ ward: { $regex: ward, $options: 'i' } }).populate('assignedPatients');
+    if (nurses.length === 0) {
+      nurses = await Nurse.find({ status: { $in: ['On Duty', 'Off Duty'] } }).populate('assignedPatients');
+    }
+    if (nurses.length > 0) {
+      nurses.sort((a, b) => (a.assignedPatients?.length || 0) - (b.assignedPatients?.length || 0));
+      const best = nurses[0];
+      const load = best.assignedPatients?.length || 0;
+      const max  = best.maxPatientLoad || 5;
+      if (load < max) {
+        await Nurse.findByIdAndUpdate(best._id, {
+          $push: { assignedPatients: patient._id },
+          status: 'On Duty',
+        });
+        assignedNurse = await Nurse.findById(best._id).populate('assignedPatients', 'firstName lastName patientId');
+      }
+    }
 
-    const populatedNurse = assignedNurse
-      ? await Nurse.findById(assignedNurse._id).populate('assignedPatients', 'firstName lastName patientId')
-      : null;
+    // ── Doctor assignment — by condition specialty with fallbacks ────────────
+    let assignedDoctor = null;
+    const conditionKey  = patient.condition || 'Other';
+    const conditionInfo = CONDITION_SPECIALTY_MAP[conditionKey] || CONDITION_SPECIALTY_MAP['Other'];
+    const preferredSpec = conditionInfo.specialty;
+    const fallbacks     = conditionInfo.fallbacks || [];
+
+    let doctor = await Doctor.findOne({ specialization: { $regex: preferredSpec, $options: 'i' }, status: 'Active', isOccupied: { $ne: true } });
+    if (!doctor) {
+      for (const spec of fallbacks) {
+        doctor = await Doctor.findOne({ specialization: { $regex: spec, $options: 'i' }, status: 'Active', isOccupied: { $ne: true } });
+        if (doctor) break;
+      }
+    }
+    if (!doctor) {
+      doctor = await Doctor.findOne({ status: 'Active', isOccupied: { $ne: true } });
+    }
+    if (doctor) {
+      await Doctor.findByIdAndUpdate(doctor._id, {
+        isOccupied: true,
+        currentAssignment: {
+          patientId: patient._id,
+          patientName,
+          bed: assignedBed ? { bedNumber: assignedBed.bedNumber, ward: assignedBed.ward } : null,
+        },
+      });
+      await Patient.findByIdAndUpdate(patient._id, { assignedDoctor: doctor._id, injurySeverity });
+      assignedDoctor = doctor;
+    } else {
+      await Patient.findByIdAndUpdate(patient._id, { injurySeverity });
+    }
 
     return res.json({
+      success: true,
       bedRequired,
       injurySeverity,
       message: bedRequired
-        ? `Patient requires a bed. Nurse assigned in ${ward} ward.`
+        ? `Patient admitted. Bed ${assignedBed?.bedNumber || 'unavailable'} assigned in ${assignedBed?.ward || ward}.`
         : `Minor injury — outpatient care only. No bed required. Nurse assigned in ${ward} ward.`,
-      assignedNurse: populatedNurse,
+      assignedBed,
+      assignedNurse,
+      assignedDoctor,
+      patient: { _id: patient._id, patientId: patient.patientId, name: patientName },
       wardInfo: {
         ward,
         bedAssignmentAdvised: bedRequired,
-        careType: bedRequired ? 'Inpatient' : 'Outpatient'
-      }
+        careType: bedRequired ? 'Inpatient' : 'Outpatient',
+      },
     });
-  } catch (error) {
-    console.error('Smart-assign error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+  } catch (err) {
+    console.error('=== SMART ASSIGN ERROR ===');
+    console.error('Message:', err.message);
+    console.error('Stack:', err.stack);
+    console.error('==========================');
+    res.status(500).json({
+      message: err.message || 'Smart assign failed',
+      detail: process.env.NODE_ENV !== 'production' ? err.stack : undefined,
+    });
   }
 });
 

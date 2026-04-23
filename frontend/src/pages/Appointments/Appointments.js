@@ -382,6 +382,9 @@ function Appointments() {
                       </Box>
                       
                       <Box display="flex" alignItems="center" gap={2}>
+                        <Typography variant="body2" sx={{ fontWeight: 700, color: '#059669', minWidth: 60 }}>
+                          ₹{appointment.consultationFee || appointment.doctor?.consultationFee || 0}
+                        </Typography>
                         <Chip
                           label={appointment.status}
                           color={getStatusColor(appointment.status)}

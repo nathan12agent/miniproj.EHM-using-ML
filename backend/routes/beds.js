@@ -27,13 +27,13 @@ router.get('/', auth, async (req, res) => {
 
     const patientBeds   = beds.filter(b => b.bedPurpose === 'patient_bed');
     const doctorRooms   = beds.filter(b => b.bedPurpose === 'doctor_room');
-    const nurseStations = bedsstation');
+    const nurseStations = beds.filter(b => b.bedPurpose === 'nurse_station');
 
     res.json({
       beds,
       breakdown: {
         patientBeds:   { total: patientBeds.length,   available: patientBeds.filter(b => b.status === 'Available').length },
-  { total: doctorRooms.length,   available: doctorRooms.filter(b => b.status === 'Available').length },
+        doctorRooms:   { total: doctorRooms.length,   available: doctorRooms.filter(b => b.status === 'Available').length },
         nurseStations: { total: nurseStations.length, available: nurseStations.filter(b => b.status === 'Available').length },
       }
     });
@@ -47,25 +47,16 @@ router.get('/', auth, async (req, res) => {
 router.get('/stats', auth, async (req, res) => {
   try {
     const stats = await Bed.getOccupancyStats();
-    
-    const overall = {
-      total: 0,
-      occupied: 0,
-      available: 0,
-      maintenance: 0
-    };
-    
+
+    const overall = { total: 0, occupied: 0, available: 0, maintenance: 0 };
     stats.forEach(stat => {
-      overall.total += stat.total;
-      overall.occupied += stat.occupied;
-      overall.available += stat.available;
+      overall.total      += stat.total;
+      overall.occupied   += stat.occupied;
+      overall.available  += stat.available;
       overall.maintenance += stat.maintenance;
     });
-    
-    res.json({
-      overall,
-      byWard: stats
-    });
+
+    res.json({ overall, byWard: stats });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server error' });
@@ -78,14 +69,11 @@ router.get('/:id', auth, async (req, res) => {
     const bed = await Bed.findById(req.params.id)
       .populate({
         path: 'patient',
-        select: 'firstN condition assignedDoctor',
+        select: 'firstName lastName patientId dateOfBirth gender phone condition assignedDoctor',
         populate: { path: 'assignedDoctor', select: 'firstName lastName specialization' }
       });
-    
-    if (!bed) {
-      return res.status(404).json({ message: 'Bed not found' });
-    }
 
+    if (!bed) return res.status(404).json({ message: 'Bed not found' });
     res.json(bed);
   } catch (error) {
     console.error(error);
@@ -96,31 +84,20 @@ router.get('/:id', auth, async (req, res) => {
 // Create new bed
 router.post('/', auth, [
   body('bedNumber').trim().notEmpty().withMessage('Bed number is required'),
-  b 'Pediatric', 'Maternity', 'Doctor Wing', 'Nurse Station']).withMessage('Invalid ward')
+  body('ward').isIn(['General', 'ICU', 'Emergency', 'Pediatric', 'Maternity', 'Doctor Wing', 'Nurse Station']).withMessage('Invalid ward')
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
+    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
-    const bed = new Bed({
-      ...req.body,
-      createdBy: req.user.id
-    });
-
+    const bed = new Bed({ ...req.body, createdBy: req.user.id });
     await bed.save();
 
-    res.status(201).json({
-      message: 'Bed created successfully',
-      bed
-    });
+    res.status(201).json({ message: 'Bed created successfully', bed });
   } catch (error) {
     console.error(error);
-    if (error.code === 11000) {
-      return res.status(400).json({ message: 'Bed number already exists' });
-    }
-    ressage: 'Server error' });
+    if (error.code === 11000) return res.status(400).json({ message: 'Bed number already exists' });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -130,34 +107,21 @@ router.post('/:id/assign', auth, [
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
+    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
     const bed = await Bed.findById(req.params.id);
-    if (!bed) {
-      return res.status(404).json({ message: 'Bed not found' });
-    }
-
-    if (bed.status === 'Occupied') {
-      return res.status(400).json({ message: 'Bed is already occupied' });
-    }
-
-    if (bed.status === 'Maintenance') {
-on({ message: 'Bed is under maintenance' });
-    }
+    if (!bed) return res.status(404).json({ message: 'Bed not found' });
+    if (bed.status === 'Occupied') return res.status(400).json({ message: 'Bed is already occupied' });
+    if (bed.status === 'Maintenance') return res.status(400).json({ message: 'Bed is under maintenance' });
 
     const patient = await Patient.findById(req.body.patientId);
-    if (!patient) {
-      return res.status(404).json({ message: 'Patient not found' });
-    }
+    if (!patient) return res.status(404).json({ message: 'Patient not found' });
 
-    // Smart bed assignment check - do not assign beds for minor injuries
     if (patient.injurySeverity === 'Minor') {
       return res.status(400).json({ message: 'Patient has a minor injury and does not require a bed (outpatient care only).' });
     }
 
-    , req.user.id);
+    await bed.assignPatient(patient._id, req.user.id);
 
     const updatedBed = await Bed.findById(bed._id)
       .populate({
@@ -166,10 +130,7 @@ on({ message: 'Bed is under maintenance' });
         populate: { path: 'assignedDoctor', select: 'firstName lastName specialization' }
       });
 
-    res.json({
-      message: 'Bed assigned successfully',
-      bed: updatedBed
-    });
+    res.json({ message: 'Bed assigned successfully', bed: updatedBed });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server error' });
@@ -180,22 +141,12 @@ on({ message: 'Bed is under maintenance' });
 router.post('/:id/discharge', auth, async (req, res) => {
   try {
     const bed = await Bed.findById(req.params.id);
-    if (!bed) {
-      return res.status(404).json({ message: 'Bed not found' });
-    }
-
-    if (bed.status !== 'Occupied') {
-      return res.status(400).json({ message: 'Bed is not occupied' });
-    }
+    if (!bed) return res.status(404).json({ message: 'Bed not found' });
+    if (bed.status !== 'Occupied') return res.status(400).json({ message: 'Bed is not occupied' });
 
     const patientId = await bed.dischargePatient(req.user.id);
-
-    res.json({
-      message: 'Patient discharged successfully',
-      bed,
-      patientId
-    });
- catch (error) {
+    res.json({ message: 'Patient discharged successfully', bed, patientId });
+  } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server error' });
   }
@@ -205,26 +156,16 @@ router.post('/:id/discharge', auth, async (req, res) => {
 router.put('/:id', auth, async (req, res) => {
   try {
     const { status, notes } = req.body;
-    
-    const bed = await Bed.findById(req.params.id);
-    if (!bed) {
-      return res.status(404).json({ message: 'Bed not found' });
-    }
 
-    if (status) {
-      bed.status = status;
-    }
-    if (notes !== undefined) {
-      bed.notes = notes;
-    }
-    bed.updatedBy
+    const bed = await Bed.findById(req.params.id);
+    if (!bed) return res.status(404).json({ message: 'Bed not found' });
+
+    if (status) bed.status = status;
+    if (notes !== undefined) bed.notes = notes;
+    bed.updatedBy = req.user.id;
 
     await bed.save();
-
-    res.json({
-      message: 'Bed updated successfully',
-      bed
-    });
+    res.json({ message: 'Bed updated successfully', bed });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server error' });
@@ -237,9 +178,7 @@ router.delete('/:id', auth, async (req, res) => {
     const bed = await Bed.findById(req.params.id);
     if (!bed) return res.status(404).json({ message: 'Bed not found' });
     if (bed.isSeeded) return res.status(403).json({ message: 'Cannot delete seeded demo records' });
-    if (bed.status === 'Occupied') {
-      return res.status(400).json({ message: 'Cannot delete occupied bed' });
-    }
+    if (bed.status === 'Occupied') return res.status(400).json({ message: 'Cannot delete occupied bed' });
 
     await bed.deleteOne();
     res.json({ message: 'Bed deleted successfully' });
@@ -249,25 +188,19 @@ router.delete('/:id', auth, async (req, res) => {
   }
 });
 
-// POST /api/beds/auto-allocate/patients — assign available patient beds to unassigned active patients
+// POST /api/beds/auto-allocate/patients
 router.post('/auto-allocate/patients', auth, async (req, res) => {
   try {
-    // Find all patient IDs already assigned to a bed
-   Beds = await Bed.find({ bedPurpose: 'patient_bed', status: 'Occupied', patient: { $ne: null } }).select('patient');
+    const occupiedBeds = await Bed.find({ bedPurpose: 'patient_bed', status: 'Occupied', patient: { $ne: null } }).select('patient');
     const assignedPatientIds = occupiedBeds.map(b => b.patient?.toString()).filter(Boolean);
 
-    // Active patients not yet in a bed
     const unassignedPatients = await Patient.find({
       status: 'Active',
       _id: { $nin: assignedPatientIds },
     }).limit(50);
 
     if (unassignedPatients.length === 0) {
-      return res.json({
-        success: true,
-        summary: 'All active patients already have beds assigned',
-        allocated: 0, skipped: 0, failed: 0, results: [],
-      });
+      return res.json({ success: true, summary: 'All active patients already have beds assigned', allocated: 0, skipped: 0, failed: 0, results: [] });
     }
 
     const results = [];
@@ -281,12 +214,7 @@ router.post('/auto-allocate/patients', auth, async (req, res) => {
           occupantType: 'patient',
           patient: patient._id,
           assignedDate: new Date(),
-          allocatedTo: {
-            name,
-            role: 'Patient',
-            id: patient.patientId,
-            department: '',
-          },
+          allocatedTo: { name, role: 'Patient', id: patient.patientId, department: '' },
         },
         { new: true }
       );
@@ -301,18 +229,14 @@ router.post('/auto-allocate/patients', auth, async (req, res) => {
     const allocated = results.filter(r => r.status === 'allocated').length;
     const failed    = results.filter(r => r.status === 'no_bed_available').length;
 
-    res.json({
-      success: true,
-      summary: `${allocated} patients allocated to beds, ${failed} could not be assigned`,
-      allocated, skipped: 0, failed, results,
-    });
+    res.json({ success: true, summary: `${allocated} patients allocated to beds, ${failed} could not be assigned`, allocated, skipped: 0, failed, results });
   } catch (err) {
     console.error('Patient auto-allocate error:', err);
     res.status(500).json({ message: err.message });
   }
 });
 
-// POST /api/beds/release/single — release a single bed by bedNumber
+// POST /api/beds/release/single
 router.post('/release/single', auth, async (req, res) => {
   try {
     const { bedId } = req.body;
@@ -333,20 +257,14 @@ router.post('/release/single', auth, async (req, res) => {
       allocatedTo: { name: null, role: null, id: null, department: null },
     });
 
-    res.json({
-      success: true,
-      message: `${occupantName} released from ${bed.bedNumber}`,
-      bedNumber: bed.bedNumber,
-      occupantType,
-      occupantName,
-    });
+    res.json({ success: true, message: `${occupantName} released from ${bed.bedNumber}`, bedNumber: bed.bedNumber, occupantType, occupantName });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: err.message });
   }
 });
 
-// POST /api/beds/auto-allocate/doctors — assign available doctor rooms to all active doctors
+// POST /api/beds/auto-allocate/doctors
 router.post('/auto-allocate/doctors', auth, async (req, res) => {
   try {
     const doctors = await Doctor.find({ status: 'Active' });
@@ -355,30 +273,15 @@ router.post('/auto-allocate/doctors', auth, async (req, res) => {
     for (const doctor of doctors) {
       const name = `Dr. ${doctor.firstName} ${doctor.lastName}`;
 
-      // Check if already has a room
-      const existing = await Bed.findOne({
-        bedPurpose: 'doctor_room',
-        'allocatedTo.id': doctor._id.toString()
-      });
-     if (existing) {
+      const existing = await Bed.findOne({ bedPurpose: 'doctor_room', 'allocatedTo.id': doctor._id.toString() });
+      if (existing) {
         results.push({ doctor: name, status: 'already_allocated', room: existing.bedNumber });
         continue;
       }
 
-      // Assign next available doctor room
       const bed = await Bed.findOneAndUpdate(
         { bedPurpose: 'doctor_room', status: 'Available' },
-        {
-          status: 'Occupied',
-          occupantType: 'doctor',
-          assignedDate: new Date(),
-          allocatedTo: {
-            name,
-            role: 'Doctor',
-            id: doctor._id.toString(),
-            department: doctor.specialization || ''
-          }
-        },
+        { status: 'Occupied', occupantType: 'doctor', assignedDate: new Date(), allocatedTo: { name, role: 'Doctor', id: doctor._id.toString(), department: doctor.specialization || '' } },
         { new: true }
       );
 
@@ -393,18 +296,14 @@ router.post('/auto-allocate/doctors', auth, async (req, res) => {
     const skipped   = results.filter(r => r.status === 'already_allocated').length;
     const failed    = results.filter(r => r.status === 'no_room_available').length;
 
-    res.json({
-      success: true,
-      summary: `${allocated} doctors allocated, ${skipped} already had rooms, ${failed} could not be allocated`,
-      allocated, skipped, failed, results
-    });
+    res.json({ success: true, summary: `${allocated} doctors allocated, ${skipped} already had rooms, ${failed} could not be allocated`, allocated, skipped, failed, results });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: err.message });
   }
 });
 
-// POST /api/beds/auto-allocate/nurses — assign available nurse stations to all nurses
+// POST /api/beds/auto-allocate/nurses
 router.post('/auto-allocate/nurses', auth, async (req, res) => {
   try {
     const nurses = await Nurse.find({});
@@ -413,11 +312,7 @@ router.post('/auto-allocate/nurses', auth, async (req, res) => {
     for (const nurse of nurses) {
       const name = `${nurse.firstName} ${nurse.lastName}`;
 
-      // Check if already has a station
-      const existing = await Bed.findOne({
-        bedPurpose: 'nurse_station',
-        'allocatedTo.id': nurse._id.toString()
-      });
+      const existing = await Bed.findOne({ bedPurpose: 'nurse_station', 'allocatedTo.id': nurse._id.toString() });
       if (existing) {
         results.push({ nurse: name, status: 'already_allocated', station: existing.bedNumber });
         continue;
@@ -427,27 +322,11 @@ router.post('/auto-allocate/nurses', auth, async (req, res) => {
         status: 'Occupied',
         occupantType: 'nurse',
         assignedDate: new Date(),
-        allocatedTo: {
-          name,
-          role: 'Nurse',
-          id: nurse._id.toString(),
-          department: nurse.ward || ''
-        }
+        allocatedTo: { name, role: 'Nurse', id: nurse._id.toString(), department: nurse.ward || '' }
       };
 
-      // Try same ward first, then any available
-      let bed = await Bed.findOneAndUpdate(
-        { bedPurpose: 'nurse_station', status: 'Available', ward: nurse.ward },
-        allocData,
-        { new: true }
-      );
-      if (!bed) {
-        bed = await Bed.findOneAndUpdate(
-          { bedPurpose: 'nurse_station', status: 'Available' },
-          allocData,
-          { new: true }
-        );
-      }
+      let bed = await Bed.findOneAndUpdate({ bedPurpose: 'nurse_station', status: 'Available', ward: nurse.ward }, allocData, { new: true });
+      if (!bed) bed = await Bed.findOneAndUpdate({ bedPurpose: 'nurse_station', status: 'Available' }, allocData, { new: true });
 
       if (bed) {
         results.push({ nurse: name, status: 'allocated', station: bed.bedNumber });
@@ -460,28 +339,19 @@ router.post('/auto-allocate/nurses', auth, async (req, res) => {
     const skipped   = results.filter(r => r.status === 'already_allocated').length;
     const failed    = results.filter(r => r.status === 'no_station_available').length;
 
-    res.json({
-      success: true,
-      summary: `${allocated} nurses allocated, ${skipped} already had stations, ${failed} could not be allocated`,
-      allocated, skipped, failed, results
-    });
+    res.json({ success: true, summary: `${allocated} nurses allocated, ${skipped} already had stations, ${failed} could not be allocated`, allocated, skipped, failed, results });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: err.message });
   }
 });
 
-// POST /api/beds/release-all/doctors — release all doctor room allocations
-router.post('/release-a(req, res) => {
+// POST /api/beds/release-all/doctors
+router.post('/release-all/doctors', auth, async (req, res) => {
   try {
     const result = await Bed.updateMany(
       { bedPurpose: 'doctor_room', status: 'Occupied' },
-      {
-        status: 'Available',
-        occupantType: 'unoccupied',
-        assignedDate: null,
-        allocatedTo: { name: null, role: null, id: null, department: null }
-      }
+      { status: 'Available', occupantType: 'unoccupied', assignedDate: null, allocatedTo: { name: null, role: null, id: null, department: null } }
     );
     res.json({ success: true, released: result.modifiedCount });
   } catch (err) {
@@ -490,17 +360,12 @@ router.post('/release-a(req, res) => {
   }
 });
 
-// POST /api/bedsnurses — release all nurse station allocations
+// POST /api/beds/release-all/nurses
 router.post('/release-all/nurses', auth, async (req, res) => {
   try {
     const result = await Bed.updateMany(
       { bedPurpose: 'nurse_station', status: 'Occupied' },
-      {
-        status: 'Available',
-        occupantType: 'unoccupied',
-        assignedDate: null,
-        allocatedTo: { name: null, role: null, id: null, department: null }
-      }
+      { status: 'Available', occupantType: 'unoccupied', assignedDate: null, allocatedTo: { name: null, role: null, id: null, department: null } }
     );
     res.json({ success: true, released: result.modifiedCount });
   } catch (err) {

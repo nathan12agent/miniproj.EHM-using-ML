@@ -40,6 +40,15 @@ import DiseaseHelper from './pages/DiseaseHelper/DiseaseHelper';
 import DoctorLayout from './components/DoctorLayout/DoctorLayout';
 import DoctorRequests from './pages/Admin/DoctorRequests';
 
+// New Doctor Portal Pages
+import DoctorAvailability from './pages/DoctorAvailability/DoctorAvailability';
+import DoctorAppointments from './pages/DoctorAppointments/DoctorAppointments';
+
+// Patient Portal Pages
+import PatientLogin from './pages/PatientLogin/PatientLogin';
+import PatientPortal from './pages/PatientPortal/PatientPortal';
+import PatientLayout from './components/PatientLayout/PatientLayout';
+
 // Create Material-UI theme - Medical Red Theme
 const theme = createTheme({
   palette: {
@@ -298,7 +307,18 @@ function App() {
               {/* Login Pages */}
               <Route path="/login" element={<Login />} />
               <Route path="/doctor/login" element={<DoctorLogin />} />
-              
+              <Route path="/patient/login" element={<PatientLogin />} />
+
+              {/* Patient Portal Routes */}
+              <Route
+                path="/patient/portal"
+                element={
+                  <PatientLayout>
+                    <PatientPortal />
+                  </PatientLayout>
+                }
+              />
+
               {/* Doctor Portal Routes */}
               <Route
                 path="/doctor/*"
@@ -308,6 +328,16 @@ function App() {
                       <Route path="/dashboard" element={
                         <DoctorLayout activeTab="dashboard">
                           <DoctorDashboard />
+                        </DoctorLayout>
+                      } />
+                      <Route path="/availability" element={
+                        <DoctorLayout activeTab="availability">
+                          <DoctorAvailability />
+                        </DoctorLayout>
+                      } />
+                      <Route path="/appointments" element={
+                        <DoctorLayout activeTab="appointments">
+                          <DoctorAppointments />
                         </DoctorLayout>
                       } />
                       <Route path="/disease-helper" element={

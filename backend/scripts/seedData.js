@@ -484,6 +484,60 @@ async function seedBills(patientIds, userId) {
   console.log(`  Bills: ${created} created`);
 }
 
+async function seedAttendance(doctorDocs, nurseDocs) {
+  console.log('\n  Seeding attendance records...');
+  const Attendance = require('../models/Attendance');
+  const today = new Date();
+  let created = 0;
+
+  for (const doctor of doctorDocs.slice(0, 3)) {
+    const clockIn  = new Date(today); clockIn.setHours(9, 0, 0, 0);
+    const clockOut = new Date(today); clockOut.setHours(17, 30, 0, 0);
+    const startOfDay = new Date(today); startOfDay.setHours(0, 0, 0, 0);
+    const result = await Attendance.findOneAndUpdate(
+      { staff: doctor._id, date: { $gte: startOfDay } },
+      {
+        $setOnInsert: {
+          staff: doctor._id,
+          staffModel: 'Doctor',
+          shift: 'Morning',
+          clockIn: { time: clockIn },
+          clockOut: { time: clockOut },
+          totalHours: 8.5,
+          status: 'Present',
+          isSeeded: true,
+        }
+      },
+      { upsert: true, new: false }
+    );
+    if (!result) created++;
+  }
+
+  for (const nurse of nurseDocs.slice(0, 4)) {
+    const clockIn = new Date(today); clockIn.setHours(7, 0, 0, 0);
+    const startOfDay = new Date(today); startOfDay.setHours(0, 0, 0, 0);
+    const shift = nurse.shift === 'Morning' ? 'Morning' : nurse.shift === 'Evening' ? 'Evening' : 'Night';
+    const result = await Attendance.findOneAndUpdate(
+      { staff: nurse._id, date: { $gte: startOfDay } },
+      {
+        $setOnInsert: {
+          staff: nurse._id,
+          staffModel: 'Nurse',
+          shift,
+          clockIn: { time: clockIn },
+          totalHours: 0,
+          status: 'Present',
+          isSeeded: true,
+        }
+      },
+      { upsert: true, new: false }
+    );
+    if (!result) created++;
+  }
+
+  console.log(`  Attendance: ${created} records created`);
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 async function main() {
@@ -502,7 +556,9 @@ async function main() {
   await seedBills(patientIds, userId);
 
   const doctors = await Doctor.find().limit(6);
+  const nurses  = await Nurse.find().limit(6);
   await seedClaims(patientIds, doctors);
+  await seedAttendance(doctors, nurses);
 
   console.log('\n=== Seed complete ===\n');
   await mongoose.disconnect();

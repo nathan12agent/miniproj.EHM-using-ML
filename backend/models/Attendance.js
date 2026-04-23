@@ -14,7 +14,7 @@ const attendanceSchema = new mongoose.Schema({
   staffModel: {
     type: String,
     required: true,
-    enum: ['User', 'Doctor']
+    enum: ['User', 'Doctor', 'Nurse']
   },
   date: {
     type: Date,

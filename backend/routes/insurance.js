@@ -139,7 +139,7 @@ router.post('/claim/submit', auth, async (req, res) => {
   }
 });
 
-// PATCH /api/insurance/claim/:claimId/review
+// PATCH /api/insurance/claim/:claimId/review 
 router.patch('/claim/:claimId/review', auth, requireRole('Administrator'), async (req, res) => {
   try {
     const { status, adminNote, rejectionReason } = req.body;

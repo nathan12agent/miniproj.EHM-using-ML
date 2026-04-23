@@ -108,38 +108,59 @@ const doctorSchema = new mongoose.Schema({
     monday: {
       isAvailable: { type: Boolean, default: true },
       startTime: { type: String, default: '09:00' },
-      endTime: { type: String, default: '17:00' }
+      endTime: { type: String, default: '17:00' },
+      slotDuration: { type: Number, default: 30, enum: [15, 30, 45, 60] },
+      breakTimes: [{ startTime: String, endTime: String }]
     },
     tuesday: {
       isAvailable: { type: Boolean, default: true },
       startTime: { type: String, default: '09:00' },
-      endTime: { type: String, default: '17:00' }
+      endTime: { type: String, default: '17:00' },
+      slotDuration: { type: Number, default: 30, enum: [15, 30, 45, 60] },
+      breakTimes: [{ startTime: String, endTime: String }]
     },
     wednesday: {
       isAvailable: { type: Boolean, default: true },
       startTime: { type: String, default: '09:00' },
-      endTime: { type: String, default: '17:00' }
+      endTime: { type: String, default: '17:00' },
+      slotDuration: { type: Number, default: 30, enum: [15, 30, 45, 60] },
+      breakTimes: [{ startTime: String, endTime: String }]
     },
     thursday: {
       isAvailable: { type: Boolean, default: true },
       startTime: { type: String, default: '09:00' },
-      endTime: { type: String, default: '17:00' }
+      endTime: { type: String, default: '17:00' },
+      slotDuration: { type: Number, default: 30, enum: [15, 30, 45, 60] },
+      breakTimes: [{ startTime: String, endTime: String }]
     },
     friday: {
       isAvailable: { type: Boolean, default: true },
       startTime: { type: String, default: '09:00' },
-      endTime: { type: String, default: '17:00' }
+      endTime: { type: String, default: '17:00' },
+      slotDuration: { type: Number, default: 30, enum: [15, 30, 45, 60] },
+      breakTimes: [{ startTime: String, endTime: String }]
     },
     saturday: {
       isAvailable: { type: Boolean, default: false },
       startTime: { type: String, default: '09:00' },
-      endTime: { type: String, default: '13:00' }
+      endTime: { type: String, default: '13:00' },
+      slotDuration: { type: Number, default: 30, enum: [15, 30, 45, 60] },
+      breakTimes: [{ startTime: String, endTime: String }]
     },
     sunday: {
       isAvailable: { type: Boolean, default: false },
       startTime: String,
-      endTime: String
+      endTime: String,
+      slotDuration: { type: Number, default: 30, enum: [15, 30, 45, 60] },
+      breakTimes: [{ startTime: String, endTime: String }]
     }
+  },
+
+  // Default slot duration (can be overridden per day)
+  defaultSlotDuration: {
+    type: Number,
+    default: 30,
+    enum: [15, 30, 45, 60]
   },
   
   // Consultation Fee
@@ -270,6 +291,73 @@ doctorSchema.methods.isAvailable = function(date, time) {
   const checkTime = new Date(`1970-01-01T${time}:00`);
   
   return checkTime >= startTime && checkTime <= endTime;
+};
+
+// Method to generate time slots for a specific date
+doctorSchema.methods.generateTimeSlots = function(date) {
+  const dayOfWeek = date.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+  const daySchedule = this.schedule[dayOfWeek];
+
+  if (!daySchedule || !daySchedule.isAvailable) return [];
+
+  const slots = [];
+  const slotDuration = daySchedule.slotDuration || this.defaultSlotDuration || 30;
+  const [startHour, startMinute] = daySchedule.startTime.split(':').map(Number);
+  const [endHour, endMinute] = daySchedule.endTime.split(':').map(Number);
+
+  let currentTime = new Date(date);
+  currentTime.setHours(startHour, startMinute, 0, 0);
+  const endTime = new Date(date);
+  endTime.setHours(endHour, endMinute, 0, 0);
+
+  while (currentTime < endTime) {
+    const slotStart = new Date(currentTime);
+    const slotEnd = new Date(currentTime.getTime() + slotDuration * 60000);
+
+    if (slotEnd <= endTime) {
+      const startTimeStr = slotStart.toTimeString().substring(0, 5);
+      const endTimeStr   = slotEnd.toTimeString().substring(0, 5);
+
+      const isBreakTime = daySchedule.breakTimes && daySchedule.breakTimes.some(bt => {
+        const bs = new Date(`1970-01-01T${bt.startTime}:00`);
+        const be = new Date(`1970-01-01T${bt.endTime}:00`);
+        const ss = new Date(`1970-01-01T${startTimeStr}:00`);
+        const se = new Date(`1970-01-01T${endTimeStr}:00`);
+        return ss < be && se > bs;
+      });
+
+      if (!isBreakTime) {
+        slots.push({ startTime: startTimeStr, endTime: endTimeStr, duration: slotDuration });
+      }
+    }
+    currentTime = slotEnd;
+  }
+  return slots;
+};
+
+// Validate if a time slot is valid for booking
+doctorSchema.methods.isValidTimeSlot = function(date, time) {
+  const slots = this.generateTimeSlots(date);
+  return slots.some(slot => slot.startTime === time);
+};
+
+// Get available slots (excluding already booked ones)
+doctorSchema.methods.getAvailableSlots = async function(date) {
+  const Appointment = require('./Appointment');
+  const allSlots = this.generateTimeSlots(date);
+  if (allSlots.length === 0) return [];
+
+  const startOfDay = new Date(date); startOfDay.setHours(0, 0, 0, 0);
+  const endOfDay   = new Date(date); endOfDay.setHours(23, 59, 59, 999);
+
+  const booked = await Appointment.find({
+    doctor: this._id,
+    appointmentDate: { $gte: startOfDay, $lte: endOfDay },
+    status: { $nin: ['Cancelled', 'No Show'] }
+  }).select('appointmentTime');
+
+  const bookedTimes = new Set(booked.map(a => a.appointmentTime));
+  return allSlots.filter(slot => !bookedTimes.has(slot.startTime));
 };
 
 // Static method to find available doctors by specialization

@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { logout } from '../../store/slices/authSlice';
 import './DoctorLayout.css';
-import DoctorChatbot from '../Chatbot/DoctorChatbot';
 
 const DoctorLayout = ({ children, activeTab }) => {
   const navigate = useNavigate();
@@ -17,7 +16,7 @@ const DoctorLayout = ({ children, activeTab }) => {
 
   const confirmLogout = () => {
     dispatch(logout());
-    navigate('/doctor/login');
+    navigate('/');
     setShowLogoutConfirm(false);
   };
 
@@ -27,8 +26,9 @@ const DoctorLayout = ({ children, activeTab }) => {
 
   const tabs = [
     { id: 'dashboard', label: 'Dashboard', icon: '📊', path: '/doctor/dashboard' },
-    { id: 'disease-helper', label: 'Disease Helper', icon: '🩺', path: '/doctor/disease-helper' },
-    { id: 'submit-claim', label: 'Submit Claim', icon: '📋', path: '/doctor/submit-claim' }
+    { id: 'availability', label: 'Manage Availability', icon: '📅', path: '/doctor/availability' },
+    { id: 'appointments', label: 'My Appointments', icon: '🗓️', path: '/doctor/appointments' },
+    { id: 'disease-helper', label: 'Disease Helper', icon: '🩺', path: '/doctor/disease-helper' }
   ];
 
   return (
@@ -118,7 +118,6 @@ const DoctorLayout = ({ children, activeTab }) => {
           </div>
         )}
       </div>
-      <DoctorChatbot doctorName={user?.name || 'Doctor'} />
     </div>
   );
 };

@@ -1,0 +1,295 @@
+const express = require('express');
+const router = express.Router();
+const { body, validationResult } = require('express-validator');
+const Doctor = require('../models/Doctor');
+const auth = require('../middleware/auth');
+
+/**
+ * @swagger
+ * /api/doctors:
+ *   get:
+ *     summary: Get all doctors
+ *     tags: [Doctors]
+ */
+router.get('/', auth, async (req, res) => {
+  try {
+    const { page = 1, limit = 10, search, specialization, status } = req.query;
+    const skip = (page - 1) * limit;
+
+    let query = {};
+    if (search) {
+      query.$or = [
+        { firstName: { $regex: search, $options: 'i' } },
+        { lastName: { $regex: search, $options: 'i' } },
+        { doctorId: { $regex: search, $options: 'i' } }
+      ];
+    }
+    if (specialization) query.specialization = specialization;
+    if (status) query.status = status;
+
+    const doctors = await Doctor.find(query)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    const Patient = require('../models/Patient');
+    const Bed = require('../models/Bed');
+    
+    // Find all patients currently assigned to these doctors
+    const doctorIds = doctors.map(d => d._id);
+    const assignedPatients = await Patient.find({ assignedDoctor: { $in: doctorIds } });
+    
+    const patientIds = assignedPatients.map(p => p._id);
+    const occupiedBeds = await Bed.find({ patient: { $in: patientIds }, status: 'Occupied' });
+
+    const patientBedMap = {};
+    occupiedBeds.forEach(b => {
+      patientBedMap[b.patient.toString()] = { ward: b.ward, bedNumber: b.bedNumber };
+    });
+
+    const doctorAssignmentMap = {};
+    assignedPatients.forEach(p => {
+       const docId = p.assignedDoctor.toString();
+       if (!doctorAssignmentMap[docId]) {
+          doctorAssignmentMap[docId] = {
+             patientName: `${p.firstName} ${p.lastName}`,
+             bed: patientBedMap[p._id.toString()] || null
+          };
+       }
+    });
+
+    const doctorsWithStatus = doctors.map(doc => {
+      const assignment = doctorAssignmentMap[doc._id.toString()];
+      return { 
+        ...doc.toObject(), 
+        availabilityStatus: assignment ? 'Occupied' : 'Available',
+        isOccupied: !!assignment,
+        currentAssignment: assignment || null
+      };
+    });
+
+    const total = await Doctor.countDocuments(query);
+
+    res.json({
+      doctors: doctorsWithStatus,
+      pagination: {
+        current: parseInt(page),
+        pages: Math.ceil(total / limit),
+        total
+      }
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+/**
+ * @swagger
+ * /api/doctors/{id}/available-slots:
+ *   get:
+ *     summary: Get available time slots for a doctor on a specific date
+ *     tags: [Doctors]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Doctor ID
+ *       - in: query
+ *         name: date
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Date in YYYY-MM-DD format
+ *     responses:
+ *       200:
+ *         description: List of available time slots
+ *       404:
+ *         description: Doctor not found
+ *       400:
+ *         description: Invalid date format
+ */
+router.get('/:id/available-slots', auth, async (req, res) => {
+  try {
+    const { date } = req.query;
+    
+    if (!date) {
+      return res.status(400).json({ message: 'Date parameter is required (format: YYYY-MM-DD)' });
+    }
+    
+    // Validate date format
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(date)) {
+      return res.status(400).json({ message: 'Invalid date format. Use YYYY-MM-DD' });
+    }
+    
+    const requestedDate = new Date(date);
+    
+    // Check if date is valid
+    if (isNaN(requestedDate.getTime())) {
+      return res.status(400).json({ message: 'Invalid date' });
+    }
+    
+    // Check if date is in the past
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    if (requestedDate < today) {
+      return res.status(400).json({ message: 'Cannot book appointments in the past' });
+    }
+    
+    const doctor = await Doctor.findById(req.params.id);
+    
+    if (!doctor) {
+      return res.status(404).json({ message: 'Doctor not found' });
+    }
+    
+    if (doctor.status !== 'Active') {
+      return res.status(400).json({ message: 'Doctor is not currently available for appointments' });
+    }
+    
+    // Get available slots
+    const availableSlots = await doctor.getAvailableSlots(requestedDate);
+    
+    const dayOfWeek = requestedDate.toLocaleDateString('en-US', { weekday: 'long' });
+    const daySchedule = doctor.schedule[dayOfWeek.toLowerCase()];
+    
+    res.json({
+      doctorId: doctor._id,
+      doctorName: doctor.fullName,
+      date: date,
+      dayOfWeek: dayOfWeek,
+      isAvailable: daySchedule?.isAvailable || false,
+      workingHours: daySchedule?.isAvailable ? {
+        startTime: daySchedule.startTime,
+        endTime: daySchedule.endTime,
+        slotDuration: daySchedule.slotDuration || doctor.defaultSlotDuration
+      } : null,
+      totalSlots: availableSlots.length,
+      availableSlots: availableSlots
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+/**
+ * @swagger
+ * /api/doctors/{id}:
+ *   get:
+ *     summary: Get doctor by ID
+ *     tags: [Doctors]
+ */
+router.get('/:id', auth, async (req, res) => {
+  try {
+    const doctor = await Doctor.findById(req.params.id);
+    
+    if (!doctor) {
+      return res.status(404).json({ message: 'Doctor not found' });
+    }
+
+    res.json(doctor);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+/**
+ * @swagger
+ * /api/doctors:
+ *   post:
+ *     summary: Create new doctor
+ *     tags: [Doctors]
+ */
+router.post('/', auth, async (req, res) => {
+  try {
+
+    // Remove empty strings so Mongoose doesn't fail on optional Enums or Date formats
+    const cleanBody = { ...req.body };
+    Object.keys(cleanBody).forEach(key => {
+      if (cleanBody[key] === '') {
+        delete cleanBody[key];
+      }
+    });
+
+    const doctor = new Doctor({
+      ...cleanBody,
+      createdBy: req.user.id
+    });
+
+    await doctor.save();
+
+    res.status(201).json({
+      message: 'Doctor created successfully',
+      doctor
+    });
+  } catch (error) {
+    console.error("DOCTOR CREATE ERROR:", error);
+    if (error.code === 11000) {
+      return res.status(400).json({ message: 'Duplicate field error: ' + JSON.stringify(error.keyValue) });
+    }
+    res.status(500).json({ message: error.message || 'Server error' });
+  }
+});
+
+/**
+ * @swagger
+ * /api/doctors/{id}:
+ *   put:
+ *     summary: Update doctor
+ *     tags: [Doctors]
+ */
+router.put('/:id', auth, async (req, res) => {
+  try {
+    const doctor = await Doctor.findByIdAndUpdate(
+      req.params.id,
+      { ...req.body, updatedBy: req.user.id },
+      { new: true, runValidators: true }
+    );
+
+    if (!doctor) {
+      return res.status(404).json({ message: 'Doctor not found' });
+    }
+
+    res.json({
+      message: 'Doctor updated successfully',
+      doctor
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+/**
+ * @swagger
+ * /api/doctors/{id}:
+ *   delete:
+ *     summary: Delete doctor
+ *     tags: [Doctors]
+ */
+router.delete('/:id', auth, async (req, res) => {
+  try {
+    const doctor = await Doctor.findByIdAndUpdate(
+      req.params.id,
+      { status: 'Inactive' },
+      { new: true }
+    );
+
+    if (!doctor) {
+      return res.status(404).json({ message: 'Doctor not found' });
+    }
+
+    res.json({ message: 'Doctor deleted successfully' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+module.exports = router;

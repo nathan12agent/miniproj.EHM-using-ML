@@ -86,6 +86,52 @@ router.get('/', auth, async (req, res) => {
 
 /**
  * @swagger
+ * /api/doctors/{id}/available-slots:
+ *   get:
+ *     summary: Get available time slots for a doctor on a specific date
+ *     tags: [Doctors]
+ */
+router.get('/:id/available-slots', auth, async (req, res) => {
+  try {
+    const { date } = req.query;
+    if (!date) return res.status(400).json({ message: 'Date parameter is required (YYYY-MM-DD)' });
+
+    const requestedDate = new Date(date);
+    if (isNaN(requestedDate.getTime())) return res.status(400).json({ message: 'Invalid date' });
+
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    if (requestedDate < today) return res.status(400).json({ message: 'Cannot book appointments in the past' });
+
+    const doctor = await Doctor.findById(req.params.id);
+    if (!doctor) return res.status(404).json({ message: 'Doctor not found' });
+    if (doctor.status !== 'Active') return res.status(400).json({ message: 'Doctor is not currently available' });
+
+    const availableSlots = await doctor.getAvailableSlots(requestedDate);
+    const dayOfWeek = requestedDate.toLocaleDateString('en-US', { weekday: 'long' });
+    const daySchedule = doctor.schedule[dayOfWeek.toLowerCase()];
+
+    res.json({
+      doctorId: doctor._id,
+      doctorName: `Dr. ${doctor.firstName} ${doctor.lastName}`,
+      date,
+      dayOfWeek,
+      isAvailable: daySchedule?.isAvailable || false,
+      workingHours: daySchedule?.isAvailable ? {
+        startTime: daySchedule.startTime,
+        endTime: daySchedule.endTime,
+        slotDuration: daySchedule.slotDuration || doctor.defaultSlotDuration
+      } : null,
+      totalSlots: availableSlots.length,
+      availableSlots
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+/**
+ * @swagger
  * /api/doctors/{id}:
  *   get:
  *     summary: Get doctor by ID

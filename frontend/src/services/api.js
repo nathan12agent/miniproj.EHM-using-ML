@@ -30,7 +30,7 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      window.location.href = '/login';
+      window.location.href = '/';
     }
     return Promise.reject(error);
   }
@@ -156,6 +156,31 @@ export const nursesAPI = {
   assignPatient: (id, patientId) => api.post(`/nurses/${id}/assign-patient`, { patientId }),
   removePatient: (id, patientId) => api.post(`/nurses/${id}/remove-patient`, { patientId }),
   smartAssign: (data) => api.post('/nurses/smart-assign', data),
+};
+
+// Patient Portal API (public endpoints - no auth required)
+export const patientPortalAPI = {
+  getDoctors:       (params) => api.get('/patient-portal/doctors', { params }),
+  getSlots:         (doctorId, date) => api.get(`/patient-portal/doctors/${doctorId}/slots`, { params: { date } }),
+  bookAppointment:  (data) => api.post('/patient-portal/appointments', data),
+  getMyAppointments:(email) => api.get('/patient-portal/appointments', { params: { email } }),
+  getSpecializations: () => api.get('/patient-portal/specializations'),
+};
+
+// Scheduling API (doctor-based slot booking)
+export const schedulingAPI = {
+  setAvailability:      (data) => api.post('/scheduling/availability', data),
+  getAvailability:      () => api.get('/scheduling/availability'),
+  deleteAvailability:   (dayOfWeek) => api.delete(`/scheduling/availability/${dayOfWeek}`),
+  setConsultationFee:   (fee) => api.put('/scheduling/consultation-fee', { fee }),
+  getSlots:             (doctorId, date) => api.get(`/scheduling/slots/${doctorId}`, { params: { date } }),
+  getDoctors:           (params) => api.get('/scheduling/doctors', { params }),
+  bookAppointment:      (data) => api.post('/scheduling/book', data),
+  cancelAppointment:    (appointmentId) => api.put(`/scheduling/cancel/${appointmentId}`),
+  getDoctorAppointments:(params) => api.get('/scheduling/doctor/appointments', { params }),
+  getPatientAppointments:(email) => api.get('/scheduling/patient/appointments', { params: { email } }),
+  getAdminAppointments: (params) => api.get('/scheduling/admin/appointments', { params }),
+  updateAppointmentStatus: (id, status) => api.patch(`/appointments/${id}/status`, { status }),
 };
 
 export default api;

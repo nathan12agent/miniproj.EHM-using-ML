@@ -42,7 +42,10 @@ function SmartAssignPanel() {
       const res = await nursesAPI.smartAssign({ patientId, injurySeverity: severity, ward });
       setResult(res.data);
     } catch (e) {
-      setErr(e.response?.data?.message || 'Assignment failed.');
+          setErr(e.response?.data?.message ||
+            e.response?.data?.error ||
+            e.message ||
+            'Assignment failed. Check backend logs.');
     } finally {
       setLoading(false);
     }
@@ -91,9 +94,10 @@ function SmartAssignPanel() {
         <Grid container spacing={2}>
           <Grid item xs={12} md={4}>
             <TextField
-              fullWidth label="Patient ID (MongoDB _id)" value={patientId}
+              fullWidth label="Patient ID" value={patientId}
               onChange={e => setPatientId(e.target.value)}
               size="small"
+              helperText="Enter patientId like P00001001 or MongoDB _id"
             />
           </Grid>
           <Grid item xs={12} md={4}>
@@ -137,6 +141,16 @@ function SmartAssignPanel() {
               ) : (
                 <Chip size="small" label="No available nurse in ward" color="default" />
               )}
+              {result.assignedDoctor ? (
+                <Chip size="small" label={`Dr. ${result.assignedDoctor.firstName} ${result.assignedDoctor.lastName} (${result.assignedDoctor.specialization})`} color="secondary" />
+              ) : (
+                <Chip size="small" label="No available doctor" color="default" />
+              )}
+              {result.assignedBed ? (
+                <Chip size="small" label={`Bed: ${result.assignedBed.bedNumber} — ${result.assignedBed.ward}`} color="primary" />
+              ) : result.bedRequired ? (
+                <Chip size="small" label="No bed available" color="default" />
+              ) : null}
             </Box>
           </Alert>
         )}
