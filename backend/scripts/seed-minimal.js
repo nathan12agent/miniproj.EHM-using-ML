@@ -27,7 +27,7 @@ const run = async () => {
   });
   console.log('Admin created:', admin.email);
 
-  // Create nurses one by one (avoid nurseId collision from Date.now())
+  // Nurse data with matching User accounts
   const nurseData = [
     { firstName:'Sarah', lastName:'Johnson', email:'sarah.j@hospital.com', phone:'+11000001', ward:'ICU', shift:'Morning', status:'On Duty', experience:8, workingHours:8, maxPatientLoad:4 },
     { firstName:'Emily', lastName:'Davis', email:'emily.d@hospital.com', phone:'+11000002', ward:'General', shift:'Morning', status:'On Duty', experience:5, workingHours:8, maxPatientLoad:6 },
@@ -37,10 +37,20 @@ const run = async () => {
   ];
 
   for (const nd of nurseData) {
-    await new Nurse({ ...nd, createdBy: admin._id }).save();
+    // Create User account for the nurse
+    const nurseUser = await User.create({
+      name: `${nd.firstName} ${nd.lastName}`,
+      email: nd.email,
+      password: 'nurse123',
+      role: 'Nurse',
+      phone: nd.phone
+    });
+
+    // Create Nurse profile linked to User
+    await new Nurse({ ...nd, userId: nurseUser._id, createdBy: admin._id }).save();
     await sleep(5); // ensure unique Date.now() for nurseId
   }
-  console.log('Nurses created:', nurseData.length);
+  console.log('Nurses created with User accounts:', nurseData.length);
 
   // Create beds
   const bedData = [];
@@ -53,7 +63,12 @@ const run = async () => {
   console.log('Beds created:', bedData.length);
 
   console.log('\n✅ Database seeded!');
-  console.log('Login: admin@hospital.com / admin123');
+  console.log('\n📋 Login Credentials:');
+  console.log('─────────────────────────────');
+  console.log('Admin:  admin@hospital.com / admin123');
+  console.log('─────────────────────────────');
+  console.log('Nurses (all use password: nurse123):');
+  nurseData.forEach(n => console.log(`  ${n.firstName} ${n.lastName}: ${n.email}`));
   process.exit(0);
 };
 

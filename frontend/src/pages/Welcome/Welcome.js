@@ -34,6 +34,10 @@ function Welcome() {
     navigate('/patient/login');
   };
 
+  const handleNurseLoginClick = () => {
+    navigate('/nurse/login');
+  };
+
   const features = [
     {
       icon: <HospitalIcon sx={{ fontSize: 40, color: 'white' }} />,
@@ -184,6 +188,23 @@ function Welcome() {
               }}
             >
               PATIENT LOGIN
+            </Button>
+            <Button
+              variant="outlined"
+              onClick={handleNurseLoginClick}
+              sx={{
+                borderColor: '#059669',
+                color: '#059669',
+                fontWeight: 600,
+                px: 3,
+                mr: 2,
+                '&:hover': {
+                  borderColor: '#047857',
+                  backgroundColor: 'rgba(5, 150, 105, 0.1)',
+                }
+              }}
+            >
+              NURSE LOGIN
             </Button>
             <Button
               variant="contained"

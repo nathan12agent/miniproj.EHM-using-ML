@@ -49,6 +49,13 @@ import PatientLogin from './pages/PatientLogin/PatientLogin';
 import PatientPortal from './pages/PatientPortal/PatientPortal';
 import PatientLayout from './components/PatientLayout/PatientLayout';
 
+// Nurse Portal Pages
+import NurseLogin from './pages/NurseLogin/NurseLogin';
+import NurseDashboard from './pages/NurseDashboard/NurseDashboard';
+import NursePatients from './pages/NursePatients/NursePatients';
+import NurseLeaveShifts from './pages/NurseLeaveShifts/NurseLeaveShifts';
+import NurseLayout from './components/NurseLayout/NurseLayout';
+
 // Create Material-UI theme - Medical Red Theme
 const theme = createTheme({
   palette: {
@@ -308,6 +315,7 @@ function App() {
               <Route path="/login" element={<Login />} />
               <Route path="/doctor/login" element={<DoctorLogin />} />
               <Route path="/patient/login" element={<PatientLogin />} />
+              <Route path="/nurse/login" element={<NurseLogin />} />
 
               {/* Patient Portal Routes */}
               <Route
@@ -316,6 +324,32 @@ function App() {
                   <PatientLayout>
                     <PatientPortal />
                   </PatientLayout>
+                }
+              />
+
+              {/* Nurse Portal Routes */}
+              <Route
+                path="/nurse/*"
+                element={
+                  <ProtectedRoute>
+                    <Routes>
+                      <Route path="/dashboard" element={
+                        <NurseLayout activeTab="dashboard">
+                          <NurseDashboard />
+                        </NurseLayout>
+                      } />
+                      <Route path="/patients" element={
+                        <NurseLayout activeTab="patients">
+                          <NursePatients />
+                        </NurseLayout>
+                      } />
+                      <Route path="/leave-shifts" element={
+                        <NurseLayout activeTab="leave-shifts">
+                          <NurseLeaveShifts />
+                        </NurseLayout>
+                      } />
+                    </Routes>
+                  </ProtectedRoute>
                 }
               />
 

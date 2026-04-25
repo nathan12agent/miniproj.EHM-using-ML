@@ -291,6 +291,21 @@ async function seedNurses(userId) {
   for (const n of NURSES) {
     const exists = await Nurse.findOne({ email: n.email });
     if (exists) continue;
+
+    // Create User account for nurse login
+    let nurseUser = await User.findOne({ email: n.email });
+    if (!nurseUser) {
+      nurseUser = new User({
+        name: `${n.firstName} ${n.lastName}`,
+        email: n.email,
+        password: 'nurse123',
+        role: 'Nurse',
+        phone: n.phone,
+        isActive: true,
+      });
+      await nurseUser.save();
+    }
+
     await new Nurse({
       ...n,
       status: 'On Duty',
@@ -298,6 +313,7 @@ async function seedNurses(userId) {
       maxPatientLoad: 5,
       isSeeded: true,
       createdBy: userId,
+      userId: nurseUser._id,
     }).save();
     created++;
   }

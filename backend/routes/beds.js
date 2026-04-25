@@ -25,12 +25,23 @@ router.get('/', auth, async (req, res) => {
       })
       .sort({ bedPurpose: 1, ward: 1, bedNumber: 1 });
 
-    const patientBeds   = beds.filter(b => b.bedPurpose === 'patient_bed');
-    const doctorRooms   = beds.filter(b => b.bedPurpose === 'doctor_room');
-    const nurseStations = beds.filter(b => b.bedPurpose === 'nurse_station');
+    // Attach assignedNurse to each occupied patient bed
+    const bedsWithNurse = await Promise.all(beds.map(async (bed) => {
+      const bedObj = bed.toObject ? bed.toObject() : bed;
+      if (bedObj.patient?._id) {
+        const nurse = await Nurse.findOne({ assignedPatients: bedObj.patient._id })
+          .select('firstName lastName email phone specialization');
+        if (bedObj.patient) bedObj.patient.assignedNurse = nurse || null;
+      }
+      return bedObj;
+    }));
+
+    const patientBeds   = bedsWithNurse.filter(b => b.bedPurpose === 'patient_bed');
+    const doctorRooms   = bedsWithNurse.filter(b => b.bedPurpose === 'doctor_room');
+    const nurseStations = bedsWithNurse.filter(b => b.bedPurpose === 'nurse_station');
 
     res.json({
-      beds,
+      beds: bedsWithNurse,
       breakdown: {
         patientBeds:   { total: patientBeds.length,   available: patientBeds.filter(b => b.status === 'Available').length },
         doctorRooms:   { total: doctorRooms.length,   available: doctorRooms.filter(b => b.status === 'Available').length },

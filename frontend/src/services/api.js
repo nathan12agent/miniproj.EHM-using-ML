@@ -28,9 +28,13 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      window.location.href = '/';
+      const url = error.config?.url || '';
+      const isLoginAttempt = url.includes('/auth/') && url.includes('/login');
+      if (!isLoginAttempt) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/';
+      }
     }
     return Promise.reject(error);
   }
@@ -156,6 +160,26 @@ export const nursesAPI = {
   assignPatient: (id, patientId) => api.post(`/nurses/${id}/assign-patient`, { patientId }),
   removePatient: (id, patientId) => api.post(`/nurses/${id}/remove-patient`, { patientId }),
   smartAssign: (data) => api.post('/nurses/smart-assign', data),
+  // Self-service (Nurse Portal)
+  applyLeave: (id, data) => api.post(`/nurses/${id}/apply-leave`, data),
+  requestShiftChange: (id, data) => api.post(`/nurses/${id}/request-shift-change`, data),
+  startBreak: (id, data) => api.post(`/nurses/${id}/start-break`, data || {}),
+  endBreak: (id) => api.post(`/nurses/${id}/end-break`),
+  logVitals: (id, data) => api.post(`/nurses/${id}/log-vitals`, data),
+  addHandoverNote: (id, data) => api.post(`/nurses/${id}/handover-note`, data),
+  addTask: (id, data) => api.post(`/nurses/${id}/tasks`, data),
+  toggleTask: (id, taskId) => api.put(`/nurses/${id}/tasks/${taskId}/toggle`),
+  deleteTask: (id, taskId) => api.delete(`/nurses/${id}/tasks/${taskId}`),
+  // Admin review
+  getPendingRequests: () => api.get('/nurses/requests/pending'),
+  reviewLeave: (nurseId, leaveId, data) => api.put(`/nurses/${nurseId}/leave/${leaveId}/review`, data),
+  reviewShiftChange: (nurseId, requestId, data) => api.put(`/nurses/${nurseId}/shift-change/${requestId}/review`, data),
+};
+
+// Nurse Auth API
+export const nurseAuthAPI = {
+  login: (credentials) => api.post('/auth/nurse/login', credentials),
+  register: (data) => api.post('/auth/nurse/register', data),
 };
 
 // Patient Portal API (public endpoints - no auth required)
